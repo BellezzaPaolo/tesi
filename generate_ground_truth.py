@@ -80,8 +80,8 @@ for h in h_v:
         param = {'ksp_type': 'preonly', 'pc_type': 'lu', 'pc_factor_mat_solver_type': 'mumps'}
         # solver =  fd.LinearVariationalSolver(problem, solver_parameters=param)
 
-        MaxIter = 100
-        toll = 1e-16
+        MaxIter = 1000
+        toll = 1e-14
 
 
         for i in range(MaxIter):

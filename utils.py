@@ -1,4 +1,5 @@
 import firedrake as fd
+import matplotlib.pyplot as plt
 
 def save_uh(mesh,uh, filename):
     chk = fd.CheckpointFile(filename, "w")
@@ -8,12 +9,10 @@ def save_uh(mesh,uh, filename):
 
 
 def load_ground_truth(filename):
-    chk = fd.CheckpointFile(filename, "r")
-    mesh = chk.load_mesh()
-    W = fd.FunctionSpace(mesh, "CG", 1)
+    with fd.CheckpointFile(filename, "r") as afile:
+        mesh = afile.load_mesh()
 
-    uh = fd.Function(W)
-    chk.load_function(uh, name="groundstate")
-    chk.close()
+        u = afile.load_function(mesh, name="groundstate")
+        afile.close()
 
-    return mesh, W, uh 
+    return mesh, u
