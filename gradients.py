@@ -1,5 +1,7 @@
 import abc
 import firedrake as fd
+import csv
+import time
 
 class gradient(abc.ABC):
     """
@@ -102,6 +104,8 @@ class gradient(abc.ABC):
         '''
         converged = False
 
+        t_start = time.time()
+
         for i in range(MaxIter):
             # compute new soltution
             self.step()
@@ -122,6 +126,8 @@ class gradient(abc.ABC):
             if error <= toll:
                 converged = True
                 break
+        
+        time_tot = time.time() - t_start
 
         # compute the final quantities
         self.compute_lambda()
@@ -129,14 +135,28 @@ class gradient(abc.ABC):
         res = dict(converged = converged,
                    energy = self.E,
                    lam = self.lam,
-                   iterate = i,
+                   iterate = i+1,
                    error = error,
-                   norm = fd.norm(self.uh,'L2'))
+                   norm = fd.norm(self.uh,'L2'),
+                   time_tot = time_tot,
+                   mean_time = time_tot/(i+1))
         
         if verbose:
             print('\r', end="", flush=True)
 
         return res
+
+    def save_data(self, filename, opt_name, res):
+        '''
+        Save minimization result in a csv file
+
+        :param filename (string): path to the csv file 
+        :param opt_name (string): specify which gradient has been used
+        :param res (dict): dictionary taht contains all the important data
+        '''
+        with open(filename, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([opt_name, self.h, self.beta.values()[0], self.tau.values()[0], res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
 
 class gradient_L2(gradient):
     def assemble_problem(self, u0, tau, u_ref):

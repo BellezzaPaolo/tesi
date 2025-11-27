@@ -1,6 +1,7 @@
 Ground_Truth/*
 __pycache__/*
 old/*
+results
 
 *.pdf
 *.h5

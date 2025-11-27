@@ -1,9 +1,10 @@
 import firedrake as fd
 import numpy as np
-import matplotlib.pyplot as plt
+import csv
+# import matplotlib.pyplot as plt
 import utils
 import gradients
-import time
+# import time
 
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
@@ -15,30 +16,77 @@ tau_v = [1, 0.5]
 MaxIter = 50
 toll = 1e-5
 
+filename_results = './results/test_1.csv'
+
+
+with open(filename_results, "a", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
+
 for h in h_v:
     for beta in beta_v:
+        nx = int((xmax-xmin)/h)
+        filename_ref = './Ground_Truth/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
+        mesh, u_ex = utils.load_ground_truth(filename_ref)
+        W = fd.FunctionSpace(mesh, 'CG',1)
+
+        # Data and boundary conditions
+        x = fd.SpatialCoordinate(mesh)
+        v = 0.5 * (x[0]**2 + x[1]**2)
+        bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]
+        u0 = 1/np.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
+
+        problem_L2 = gradients.gradient_L2(beta, v, W, bcs, h)
+        problem_H1 = gradients.gradient_H1(beta, v, W, bcs, h)
+        problem_a0 = gradients.gradient_a0(beta, v, W, bcs, h)
+        problem_az = gradients.gradient_az(beta, v, W, bcs, h)
+
         for tau in tau_v:
-            nx = int((xmax-xmin)/h)
-            filename = './Ground_Truth/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
-            mesh, u_ex = utils.load_ground_truth(filename)
-            W = fd.FunctionSpace(mesh, 'CG',1)
+            # L2 gradient
+            problem_L2.assemble_problem(u0, tau, u_ex)
 
-            # Data and boundary conditions
-            x = fd.SpatialCoordinate(mesh)
-            v = 0.5 * (x[0]**2 + x[1]**2)
-            bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]
+            res = problem_L2.minimize(MaxIter, toll)
 
-            problem = gradients.gradient_a0(beta, v, W, bcs, h)
-
-            u0 = 1/np.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
-
-            problem.assemble_problem(u0, tau, u_ex)
-
-            res = problem.minimize(MaxIter, toll)
+            problem_L2.save_data(filename_results, 'L2',res)
 
             if res["converged"]:
-                print(f'Minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
-                print(f'Final error: {res["error"]} and norm of the solution: {res["norm"]}')
+                print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
             else:
-                print(f'Minization with h: {h}, beta: {beta}, tau:{tau} did not converged to energy: {res["energy"]:.4f} with lambda: {res["lam"]:.4f} at the iterate: {res["iterate"]}')
-                print(f'Final error: {res["error"]} and norm of the solution: {res["norm"]}')
+                print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+            
+
+            # H1 gradient
+            problem_H1.assemble_problem(u0, tau, u_ex)
+
+            res = problem_H1.minimize(MaxIter, toll)
+
+            problem_H1.save_data(filename_results, 'H1',res)
+
+            if res["converged"]:
+                print(f'H1 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            else:
+                print(f'H1 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+
+            # a_0 gradient
+            problem_a0.assemble_problem(u0, tau, u_ex)
+
+            res = problem_a0.minimize(MaxIter, toll)
+
+            problem_a0.save_data(filename_results, 'a0',res)
+
+            if res["converged"]:
+                print(f'a_0 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            else:
+                print(f'a_0 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+
+            # az gradient
+            problem_az.assemble_problem(u0, tau, u_ex)
+
+            res = problem_az.minimize(MaxIter, toll)
+
+            problem_az.save_data(filename_results, 'az',res)
+
+            if res["converged"]:
+                print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            else:
+                print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
