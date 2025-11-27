@@ -26,7 +26,7 @@ with open(filename_results, "a", newline="") as f:
 for h in h_v:
     for beta in beta_v:
         nx = int((xmax-xmin)/h)
-        filename_ref = './Ground_Truth/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
+        filename_ref = './Ground_Truth_1/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
         mesh, u_ex = utils.load_ground_truth(filename_ref)
         W = fd.FunctionSpace(mesh, 'CG',1)
 
@@ -34,7 +34,7 @@ for h in h_v:
         x = fd.SpatialCoordinate(mesh)
         v = 0.5 * (x[0]**2 + x[1]**2)
         bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]
-        u0 = 1/np.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
+        u0 = 1/fd.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
 
         problem_L2 = gradients.gradient_L2(beta, v, W, bcs, h)
         problem_H1 = gradients.gradient_H1(beta, v, W, bcs, h)

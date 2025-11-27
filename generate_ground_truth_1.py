@@ -1,5 +1,5 @@
 import firedrake as fd
-import numpy as np
+# import numpy as np
 import matplotlib.pyplot as plt
 import utils
 
@@ -52,7 +52,7 @@ for h in h_v:
         u = fd.TrialFunction(W)
         w = fd.TestFunction(W)
 
-        u0 = 1/np.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
+        u0 = 1/fd.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
         # u0 = fd.Constant(1.)
 
         u_old = fd.Function(W)
@@ -108,7 +108,7 @@ for h in h_v:
         print()
         print()
         print(f'Final energy estimate: {e_gs} and associated lambda: {lamb_gs} with h: {h} and beta: {beta}') #0.79620688 2.06380
-        filename = './Ground_Truth/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
+        filename = './Ground_Truth_1/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
         utils.save_uh(mesh, uh, filename)
 
 # Plot it
