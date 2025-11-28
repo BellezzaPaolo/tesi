@@ -199,45 +199,66 @@ class gradient_H1(gradient):
 
         super().assemble_problem(u0, tau, u_ref)
 
-        self.a = 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx
+        self.A = fd.assemble(0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx, bcs = self.bcs)
 
-        self.m = self.u * self.w * fd.dx
+        # assemble the solver for the Riesz rappresentation
+        # self.rhs_R = self.u_old * self.w * fd.dx
 
         self.R_u = fd.Function(self.W)
+
+        # problem_R = fd.LinearVariationalProblem(self.a, self.rhs_R, self.R_u, self.bcs)
+        # self.solver_R = fd.LinearVariationalSolver(problem_R, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})#, solver_parameters = param)
+        self.solver_Stiffnes = fd.LinearSolver(self.A, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+
+        # assemble the solver for the gradient
+        # self.rhs_E = 0.5 * fd.dot(fd.grad(self.u_old), fd.grad(self.w)) * fd.dx \
+        #         + self.v * self.u_old * self.w * fd.dx \
+        #         + self.beta * abs(self.u_old) **2 * self.u_old * self.w * fd.dx
+        
         self.gradE = fd.Function(self.W)
+        
+        # problem_E = fd.LinearVariationalProblem(self.a, self.rhs_E, self.gradE, self.bcs)
+        # self.solver_E =  fd.LinearVariationalSolver(problem_E, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})#, solver_parameters=param)
+
+        self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+
+        # intE = 1.
+        # intR = 1.
+
+        # self.rhs_u = self.u_old * self.w * fd.dx \
+        #         - self.tau * self.gradE * self.w * fd.dx \
+        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx
+        
+        # problem_u = fd.LinearVariationalProblem(self.m, self.rhs_u, self.uh, self.bcs)
+        # self.solver_u = fd.LinearVariationalSolver(problem_u, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
     def step(self):
         '''
         Implements a step of the gradient H1
         '''
         # compute the Riesz projection
-        rhs_R = self.u_old * self.w * fd.dx 
+        rhs_R = fd.assemble(self.u_old * self.w * fd.dx)
 
-        problem_R = fd.LinearVariationalProblem(self.a, rhs_R, self.R_u, self.bcs)
-        solver_R = fd.LinearVariationalSolver(problem_R)#, solver_parameters = param)
-        solver_R.solve()
+        self.solver_Stiffnes.solve(self.R_u, rhs_R)
         
         # compute the gradient
-        rhs_E = 0.5 * fd.dot(fd.grad(self.u_old), fd.grad(self.w)) * fd.dx \
+        rhs_E = fd.assemble(0.5 * fd.dot(fd.grad(self.u_old), fd.grad(self.w)) * fd.dx \
                 + self.v * self.u_old * self.w * fd.dx \
-                + self.beta * abs(self.u_old) **2 * self.u_old * self.w * fd.dx
-        
-        problem_E = fd.LinearVariationalProblem(self.a, rhs_E, self.gradE, self.bcs)
-        solver_E =  fd.LinearVariationalSolver(problem_E)#, solver_parameters=param)
-        solver_E.solve()
+                + self.beta * abs(self.u_old) **2 * self.u_old * self.w * fd.dx)
+
+        self.solver_Stiffnes.solve(self.gradE, rhs_E)
 
         # compute the solution
 
         intE = fd.assemble(self.gradE * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        rhs_u = self.u_old * self.w * fd.dx \
+        rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
                 - self.tau * self.gradE * self.w * fd.dx \
-                + self.tau * intE/intR * self.R_u * self.w * fd.dx
+                + self.tau * intE/intR * self.R_u * self.w * fd.dx)
         
-        problem_u = fd.LinearVariationalProblem(self.a, rhs_u, self.uh, self.bcs)
-        solver_u = fd.LinearVariationalSolver(problem_u)
-        solver_u.solve()
+        self.solver_Mass.solve(self.uh, rhs_u)
 
             
 class gradient_a0(gradient):
@@ -251,42 +272,65 @@ class gradient_a0(gradient):
         '''
         super().assemble_problem(u0, tau, u_ref)
 
-        self.a = 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx\
-                + self.v * self.u * self.w * fd.dx
-        
-        self.m = self.u * self.w * fd.dx
-
+        # assemble the solver for Riesz(z) projection
         self.R_u = fd.Function(self.W)
+        self.A = fd.assemble(0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx\
+                                + self.v * self.u * self.w * fd.dx, bcs = self.bcs)
+
+        #problem_Ru = fd.LinearVariationalProblem(self.a, self.rhs_Ru, self.R_u, self.bcs)
+        self.solver_Stiffness = fd.LinearSolver(self.A, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+
+        # assemble the solver for Riesz(z^2z) projection
         self.R_u2u = fd.Function(self.W)
+        # self.rhs_Ru2u = self.beta * abs(self.u_old) ** 2 * self.u_old * self.w * fd.dx
+
+        # problem_Ru2u = fd.LinearVariationalProblem(self.a, self.rhs_Ru2u, self.R_u2u, self.bcs)
+        # self.solver_Ru2u = fd.LinearVariationalSolver(problem_Ru2u, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+
+        # assemble the solver for the solution
+        self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+
+        # self.rhs_u = self.u_old * self.w * fd.dx \
+        #         - self.tau * (self.u_old + self.R_u2u) * self.w * fd.dx \
+        #         + self.tau * 1./1. * self.R_u * self.w * fd.dx
+        
+        # problem_u = fd.LinearVariationalProblem(self.m, self.rhs_u, self.uh, self.bcs)
+        self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+
 
     def step(self):
         '''
         Impelements one step of the a_0 gradient 
         '''
         # compute reisz prjections
-        rhs_Ru = self.u_old * self.w * fd.dx
+        # self.rhs_Ru = self.u_old * self.w * fd.dx
+        # problem_Ru = fd.LinearVariationalProblem(self.a, self.rhs_Ru, self.R_u, self.bcs)
+        # self.solver_Ru = fd.LinearVariationalSolver(problem_Ru, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        rhs_Ru = fd.assemble(self.u_old * self.w * fd.dx)
+        self.solver_Stiffness.solve(self.R_u, rhs_Ru)
 
-        problem_Ru = fd.LinearVariationalProblem(self.a, rhs_Ru, self.R_u, self.bcs)
-        solver_Ru = fd.LinearVariationalSolver(problem_Ru)
-        solver_Ru.solve()
+        # self.rhs_Ru2u = self.beta * abs(self.u_old) ** 2 * self.u_old * self.w * fd.dx
+        # problem_Ru2u = fd.LinearVariationalProblem(self.a, self.rhs_Ru2u, self.R_u2u, self.bcs)
+        # self.solver_Ru2u = fd.LinearVariationalSolver(problem_Ru2u, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        rhs_Ru2u = fd.assemble(self.beta * abs(self.u_old) ** 2 * self.u_old * self.w * fd.dx)
 
-        rhs_Ru2u = self.beta * abs(self.u_old) ** 2 * self.u_old * self.w * fd.dx
-
-        problem_Ru2u = fd.LinearVariationalProblem(self.a, rhs_Ru2u, self.R_u2u, self.bcs)
-        solver_Ru2u = fd.LinearVariationalSolver(problem_Ru2u)
-        solver_Ru2u.solve()
+        self.solver_Stiffness.solve(self.R_u2u,rhs_Ru2u)
 
         # compute the solution
         intE = fd.assemble((self.u_old + self.R_u2u) * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        rhs_u = self.u_old * self.w * fd.dx \
-                - self.tau * (self.u_old + self.R_u2u) * self.w * fd.dx \
-                + self.tau * intE/intR * self.R_u * self.w * fd.dx
+        # self.rhs_u = self.u_old * self.w * fd.dx \
+        #         - self.tau * (self.u_old + self.R_u2u) * self.w * fd.dx \
+        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx
         
-        problem_u = fd.LinearVariationalProblem(self.m, rhs_u, self.uh, self.bcs)
-        solver_u = fd.LinearVariationalSolver(problem_u)
-        solver_u.solve()
+        # problem_u = fd.LinearVariationalProblem(self.m, self.rhs_u, self.uh, self.bcs)
+        # self.solver_u = fd.LinearVariationalSolver(problem_u, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
+                - self.tau * (self.u_old + self.R_u2u) * self.w * fd.dx \
+                + self.tau * intE/intR * self.R_u * self.w * fd.dx)
+        
+        self.solver_Mass.solve(self.uh, rhs_u)
 
 
 class gradient_az(gradient):
@@ -300,12 +344,23 @@ class gradient_az(gradient):
         '''
         super().assemble_problem(u0, tau, u_ref)
 
-        self.a = 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
-                + self.v * self.u * self.w * fd.dx
-        
-        self.m = self.u * self.w * fd.dx
-
+        # initialize the forms for the Riesz solver
         self.R_u = fd.Function(self.W)
+
+        self.a = 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
+                + self.v * self.u * self.w * fd.dx#, bcs = self.bcs)
+
+        # assemble ths solver for the solution
+        self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+
+        # self.rhs_u = self.u_old * self.w * fd.dx \
+        #         - self.tau * self.u_old * self.w * fd.dx\
+        #         + self.tau * 1./1. * self.R_u * self.w * fd.dx
+        
+        # problem_u = fd.LinearVariationalProblem(self.m, self.rhs_u, self.uh, self.bcs)
+        # self.solver_u = fd.LinearVariationalSolver(problem_u, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        
     
     def step(self):
         '''
@@ -325,10 +380,8 @@ class gradient_az(gradient):
         intE = fd.assemble(self.u_old * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        rhs_u = self.u_old * self.w * fd.dx \
+        rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
                 - self.tau * self.u_old * self.w * fd.dx\
-                + self.tau * intE/intR * self.R_u * self.w * fd.dx
+                + self.tau * intE/intR * self.R_u * self.w * fd.dx)
         
-        problem_u = fd.LinearVariationalProblem(self.m, rhs_u, self.uh, self.bcs)
-        solver_u = fd.LinearVariationalSolver(problem_u)
-        solver_u.solve()
+        self.solver_Mass.solve(self.uh, rhs_u)

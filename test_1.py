@@ -1,5 +1,5 @@
 import firedrake as fd
-import numpy as np
+# import numpy as np
 import csv
 # import matplotlib.pyplot as plt
 import utils
