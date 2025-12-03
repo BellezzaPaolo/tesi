@@ -28,7 +28,7 @@ for h in h_v:
         nx = int((xmax-xmin)/h)
         ny = int((ymax-ymin)/h)
 
-        mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX = xmin, originY = ymin)
+        mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX = xmin, originY = ymin, diagonal = 'right')
 
         # Plot it
         fig, ax = plt.subplots()
@@ -81,7 +81,7 @@ for h in h_v:
         # solver =  fd.LinearVariationalSolver(problem, solver_parameters=param)
 
         MaxIter = 1000
-        toll = 1e-14
+        toll = 1e-13
 
 
         for i in range(MaxIter):
