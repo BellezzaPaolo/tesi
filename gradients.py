@@ -1,5 +1,6 @@
 import abc
 import firedrake as fd
+import matplotlib.pyplot as plt
 import csv
 import time
 
@@ -43,6 +44,7 @@ class gradient(abc.ABC):
         self.lam = 0.
         self.E = 0.
         self.uh = fd.Function(self.W)
+        self.histoy_E = []
 
 
     def energy(self, uh = None):
@@ -85,6 +87,7 @@ class gradient(abc.ABC):
 
         self.E = 0.
         self.lam = 0.
+        self.histoy_E = []
 
 
     @abc.abstractmethod
@@ -114,6 +117,8 @@ class gradient(abc.ABC):
             self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
 
             self.energy()
+
+            self.histoy_E.append(self.E)
 
             # calculate the error
             error = abs(self.E - self.E_ref) / self.E_ref
@@ -145,6 +150,27 @@ class gradient(abc.ABC):
             print('\r', end="", flush=True)
 
         return res
+
+    def plot_history(self, method_name):
+        '''
+        Plot the convergence history of the minimization
+
+        :param method_name (string): name of the gradient method used'''
+        fig, ax = plt.subplots(2,1, figsize=(5,10))
+        fig.suptitle(f'{method_name}_gradient with h={self.h}, beta={self.beta.values()[0]}, tau={self.tau.values()[0]}')
+        ax[0].semilogy(range(1,len(self.histoy_E)+1), [abs(E - self.E_ref)/self.E_ref for E in self.histoy_E], marker='o')
+        ax[0].set_xlabel('Iteration')
+        ax[0].set_ylabel('Relative Error on Energy')
+        ax[0].set_title('Convergence History')
+        ax[0].grid(True)
+
+        ax[1].plot(range(1,len(self.histoy_E)+1), self.histoy_E, marker='o')
+        ax[1].set_xlabel('Iteration')
+        ax[1].set_ylabel('Energy')
+        ax[1].set_title('Energy History')
+        ax[1].grid(True)
+        plt.show()
+
 
     def save_data(self, filename, opt_name, res):
         '''
