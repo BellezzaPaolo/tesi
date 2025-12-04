@@ -1,7 +1,7 @@
 import firedrake as fd
-import numpy as np
+# import numpy as np
 import csv
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import utils
 import gradients
 # import time
@@ -17,7 +17,7 @@ tau_L2 = [0.1, 0.5, 1., 1.5, 2., 2.5, 3., 5., 10., 100., 1000.]
 MaxIter = 50
 toll = 1e-5
 
-filename_results = './results/test_2.csv'
+filename_results = './results/test_2(1).csv'
 
 
 with open(filename_results, "a", newline="") as f:
@@ -47,6 +47,8 @@ for tau in tau_L2:
 
     problem_L2.save_data(filename_results, 'L2',res)
 
+    problem_L2.plot_history('L2')
+
     if res["converged"]:
         print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
     else:
@@ -61,7 +63,11 @@ for tau in tau_az:
 
     problem_az.save_data(filename_results, 'az',res)
 
+    problem_az.plot_history('az')
+
     if res["converged"]:
         print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
     else:
         print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+
+plt.show()

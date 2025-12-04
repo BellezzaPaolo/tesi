@@ -1,7 +1,7 @@
 import firedrake as fd
 # import numpy as np
 import csv
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import utils
 import gradients
 # import time
@@ -9,7 +9,7 @@ import gradients
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
 
-h_v = [12 * 2**(-6)]#,12 * 2**(-8)]
+h_v = [12 * 2**(-6),12 * 2**(-8)]
 beta_v = [10, 100, 1000]
 tau_v = [1, 0.5]
 
@@ -48,6 +48,7 @@ for h in h_v:
             res = problem_L2.minimize(MaxIter, toll)
 
             problem_L2.save_data(filename_results, 'L2',res)
+            problem_L2.plot_history('L2')
 
             if res["converged"]:
                 print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
@@ -61,6 +62,7 @@ for h in h_v:
             res = problem_H1.minimize(MaxIter, toll)
 
             problem_H1.save_data(filename_results, 'H1',res)
+            problem_H1.plot_history('H1')
 
             if res["converged"]:
                 print(f'H1 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
@@ -73,6 +75,7 @@ for h in h_v:
             res = problem_a0.minimize(MaxIter, toll)
 
             problem_a0.save_data(filename_results, 'a0',res)
+            problem_a0.plot_history('a0')
 
             if res["converged"]:
                 print(f'a_0 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
@@ -85,8 +88,11 @@ for h in h_v:
             res = problem_az.minimize(MaxIter, toll)
 
             problem_az.save_data(filename_results, 'az',res)
+            problem_az.plot_history('az')
 
             if res["converged"]:
                 print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
             else:
                 print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+
+plt.show()
