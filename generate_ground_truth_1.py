@@ -1,6 +1,6 @@
 import firedrake as fd
 # import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import utils
 
 def assemble_forms(u, w, v, tau, u_old, beta):
@@ -20,69 +20,68 @@ def assemble_forms(u, w, v, tau, u_old, beta):
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
 
-h_v = [12 * 2**(-6),12 * 2**(-8)]
+h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9), 12 * 2**(-10)]
 beta_v = [10, 100, 1000]
 
 for h in h_v:
+    nx = int((xmax-xmin)/h)
+    ny = int((ymax-ymin)/h)
+
+    mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX = xmin, originY = ymin, diagonal = 'right')
+
+    # Plot it
+    # fig, ax = plt.subplots()
+    # fd.triplot(mesh, axes=ax)
+    # ax.legend()
+    # ax.axis('equal')
+    # plt.title('Mesh')
+
+    # function spaces
+    W = fd.FunctionSpace(mesh, 'CG', 1)
+
+
+    # Data and boundary conditions
+    x = fd.SpatialCoordinate(mesh)
+    v = 0.5 * (x[0]**2 + x[1]**2)
+    bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]
+
+    tau = 1 #[1., 0.5]
+
+    # define the variational problem
+    u = fd.TrialFunction(W)
+    w = fd.TestFunction(W)
+
+    u0 = 1/fd.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
+    # u0 = fd.Constant(1.)
+
+    u_old = fd.Function(W)
+    u_old.interpolate(u0)
+
+    # Plot it
+    # fig, ax = plt.subplots()
+    # col = fd.tripcolor(u_old, axes=ax)
+    # plt.colorbar(col)
+    # ax.axis('equal')
+    # plt.title('Initial guess')
+
+    # a, rhs = assemble_forms(u, w, v, tau[0], u_old, beta[0])
+
+    uh = fd.Function(W)
+
+    # problem = fd.LinearVariationalProblem(a, rhs, uh, bcs)
+    # param = {'ksp_type': 'gmres', 'pc_type': 'bjacobi', 'sub_pc_type': 'ilu',
+    #          'ksp_monitor':None}
+    # Use the following parameters if, instead, you want to solve the problem by a direct method.
+    param = {'ksp_type': 'preonly', 'pc_type': 'lu', 'pc_factor_mat_solver_type': 'mumps'}
+    # solver =  fd.LinearVariationalSolver(problem, solver_parameters=param)
+
+    MaxIter = 1000
+    toll = 1e-10
+
     for beta in beta_v:
-        nx = int((xmax-xmin)/h)
-        ny = int((ymax-ymin)/h)
-
-        mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX = xmin, originY = ymin, diagonal = 'right')
-
-        # Plot it
-        fig, ax = plt.subplots()
-        fd.triplot(mesh, axes=ax)
-        ax.legend()
-        ax.axis('equal')
-        plt.title('Mesh')
-
-        # function spaces
-        W = fd.FunctionSpace(mesh, 'CG', 1)
-
-
-        # Data and boundary conditions
-        x = fd.SpatialCoordinate(mesh)
-        v = 0.5 * (x[0]**2 + x[1]**2)
-        bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]
-
-        tau = 1 #[1., 0.5]
-
-        # define the variational problem
-        u = fd.TrialFunction(W)
-        w = fd.TestFunction(W)
-
-        u0 = 1/fd.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
-        # u0 = fd.Constant(1.)
-
-        u_old = fd.Function(W)
-        u_old.interpolate(u0)
-
-        # Plot it
-        fig, ax = plt.subplots()
-        col = fd.tripcolor(u_old, axes=ax)
-        plt.colorbar(col)
-        ax.axis('equal')
-        plt.title('Initial guess')
-
-        # a, rhs = assemble_forms(u, w, v, tau[0], u_old, beta[0])
-
-        uh = fd.Function(W)
 
         def energy(uh, v = v, beta = beta):
             return 0.5 * fd.assemble(( 0.5 * fd.dot(fd.grad(uh), fd.grad(uh)) + v * uh**2 + beta/2 * abs(uh) **4) * fd.dx)
-
-
-        # problem = fd.LinearVariationalProblem(a, rhs, uh, bcs)
-        # param = {'ksp_type': 'gmres', 'pc_type': 'bjacobi', 'sub_pc_type': 'ilu',
-        #          'ksp_monitor':None}
-        # Use the following parameters if, instead, you want to solve the problem by a direct method.
-        param = {'ksp_type': 'preonly', 'pc_type': 'lu', 'pc_factor_mat_solver_type': 'mumps'}
-        # solver =  fd.LinearVariationalSolver(problem, solver_parameters=param)
-
-        MaxIter = 1000
-        toll = 1e-13
-
 
         for i in range(MaxIter):
             a, rhs = assemble_forms(u, w, v, tau, u_old, beta)
@@ -112,10 +111,10 @@ for h in h_v:
         utils.save_uh(mesh, uh, filename)
 
 # Plot it
-fig, ax = plt.subplots()
-col = fd.tripcolor(uh, axes=ax)
-plt.colorbar(col)
-ax.axis('equal')
-plt.title('Solution')
+# fig, ax = plt.subplots()
+# col = fd.tripcolor(uh, axes=ax)
+# plt.colorbar(col)
+# ax.axis('equal')
+# plt.title('Solution')
 
 # plt.show()
