@@ -70,7 +70,7 @@ class gradient(abc.ABC):
         
         return self.lam
     
-    def assemble_problem(self, u0, tau, u_ref):
+    def assemble_problem(self, u0, tau, u_ref = None):
         '''
         Inizialize and assembles all forms related to the minimization
         
@@ -81,9 +81,21 @@ class gradient(abc.ABC):
         self.tau = fd.Constant(tau)
 
         self.u_old = fd.Function(self.W)
-        self.u_old.interpolate(u0)
+
+        norm = fd.norm(u0,'L2')
+        self.u_old.interpolate(u0/norm)
         
-        self.E_ref = self.energy(u_ref)
+        if u_ref is not None:
+            self.E_ref = self.energy(u_ref)
+        else:
+            if self.beta.values()[0] == 10.0:
+                self.E_ref = 0.79620688
+            elif self.beta.values()[0] == 100.0:
+                self.E_ref = 1.97298868
+            elif self.beta.values()[0] == 1000.0:
+                self.E_ref = 5.99303235
+            else:
+                print('Warning: reference energy not known, using initial guess energy as reference. beta value:', self.beta.values()[0])
 
         self.E = 0.
         self.lam = 0.
@@ -126,7 +138,7 @@ class gradient(abc.ABC):
             self.u_old.assign(self.uh)
 
             if verbose:
-                print(f'\rIter {i}, Error: {error:.6e}, Energy: {self.E:.10f}', end="", flush=True)
+                print(f'\rIter {i}, Error: {error:.6e}, Energy: {self.E:.10f} and lambda: {self.compute_lambda():.6f}', end="", flush=True)
 
             if error <= toll:
                 converged = True
@@ -164,7 +176,7 @@ class gradient(abc.ABC):
         ax[0].set_title('Convergence History')
         ax[0].grid(True)
 
-        ax[1].plot(range(1,len(self.histoy_E)+1), self.histoy_E, marker='o')
+        ax[1].semilogy(range(1,len(self.histoy_E)+1), self.histoy_E, marker='o')
         ax[1].set_xlabel('Iteration')
         ax[1].set_ylabel('Energy')
         ax[1].set_title('Energy History')
@@ -184,8 +196,25 @@ class gradient(abc.ABC):
             writer = csv.writer(f)
             writer.writerow([opt_name, self.h, self.beta.values()[0], self.tau.values()[0], res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
 
+class dummy_gradient(gradient):
+    def assemble_problem(self, u0, tau, u_ref = None):
+        '''
+        Allocate and assembles forms and minimization quantities
+
+        :param u0 (fd.Function): initial guess
+        :param tau (float): time step
+        :param u_ref (fd.Function): reference solution
+        '''
+        super().assemble_problem(u0, tau, u_ref)
+
+    def step(self):
+        '''
+        Dummy step that does nothing
+        '''
+        self.uh.assign(self.u_old)
+        
 class gradient_L2(gradient):
-    def assemble_problem(self, u0, tau, u_ref):
+    def assemble_problem(self, u0, tau, u_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -214,7 +243,7 @@ class gradient_L2(gradient):
 
 
 class gradient_H1(gradient):
-    def assemble_problem(self, u0, tau, u_ref):
+    def assemble_problem(self, u0, tau, u_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -265,7 +294,7 @@ class gradient_H1(gradient):
 
             
 class gradient_a0(gradient):
-    def assemble_problem(self, u0, tau, u_ref):
+    def assemble_problem(self, u0, tau, u_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -314,7 +343,7 @@ class gradient_a0(gradient):
 
 
 class gradient_az(gradient):
-    def assemble_problem(self, u0, tau, u_ref):
+    def assemble_problem(self, u0, tau, u_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -354,8 +383,7 @@ class gradient_az(gradient):
         intE = fd.assemble(self.u_old * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
-                - self.tau * self.u_old * self.w * fd.dx\
+        rhs_u = fd.assemble((1 - self.tau) * self.u_old * self.w * fd.dx \
                 + self.tau * intE/intR * self.R_u * self.w * fd.dx)
         
         self.solver_Mass.solve(self.uh, rhs_u)
