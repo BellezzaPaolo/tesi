@@ -9,14 +9,16 @@ import gradients
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
 
-h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
+# h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
+h_v = [12 * 2**(-6),12 * 2**(-8)]
 beta_v = [10, 100, 1000]
-tau_v = [1, 0.5]
+tau_v = [0.01, 0.005, 0.001]
+# tau_v = [1, 0.5]
 
-MaxIter = 500
+MaxIter = 200
 toll = 1e-5
 
-filename_results = './results/test_1_ref.csv'
+filename_results = './results/test_1_L2_expl.csv'#pointwise_itself.csv'
 
 
 with open(filename_results, "a", newline="") as f:
@@ -27,7 +29,7 @@ for h in h_v:
     for beta in beta_v:
         nx = int((xmax-xmin)/h)
         filename_ref = './Ground_Truth_1/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
-        mesh, _ = utils.load_ground_truth(filename_ref)
+        mesh, u_ex = utils.load_ground_truth(filename_ref)
         W = fd.FunctionSpace(mesh, 'CG',1)
 
         # Data and boundary conditions
@@ -37,13 +39,14 @@ for h in h_v:
         u0 = 1/fd.pi**(0.5) * fd.exp(-(x[0]**2 + x[1]**2) / 2)
 
         problem_L2 = gradients.gradient_L2(beta, v, W, bcs, h)
+        # problem_L2_e = gradients.gradient_L2_fully_expli(beta, v, W, bcs, h)
         problem_H1 = gradients.gradient_H1(beta, v, W, bcs, h)
         problem_a0 = gradients.gradient_a0(beta, v, W, bcs, h)
         problem_az = gradients.gradient_az(beta, v, W, bcs, h)
 
         for tau in tau_v:
             # L2 gradient
-            problem_L2.assemble_problem(u0, tau)#, u_ex)
+            problem_L2.assemble_problem(u0, tau, u_ex)
 
             res = problem_L2.minimize(MaxIter, toll)
 
@@ -54,10 +57,24 @@ for h in h_v:
                 print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
             else:
                 print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+
+
+            # #L2 gradient fully explicit
+            # problem_L2_e.assemble_problem(u0, tau, u_ex, lump = True)
+
+            # res = problem_L2_e.minimize(MaxIter, toll)
+
+            # problem_L2_e.save_data(filename_results, 'L2_e',res)
+            # problem_L2_e.plot_history('L2_e', save = True)
+            
+            # if res["converged"]:
+            #     print(f'fully explicit L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            # else:
+            #     print(f'fully explicit L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
             
 
             # H1 gradient
-            problem_H1.assemble_problem(u0, tau)#, u_ex)
+            problem_H1.assemble_problem(u0, tau, u_ex)
 
             res = problem_H1.minimize(100, toll)
 
@@ -70,7 +87,7 @@ for h in h_v:
                 print(f'H1 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
 
             # a_0 gradient
-            problem_a0.assemble_problem(u0, tau)#, u_ex)
+            problem_a0.assemble_problem(u0, tau, u_ex)
 
             res = problem_a0.minimize(MaxIter, toll)
 
@@ -83,7 +100,7 @@ for h in h_v:
                 print(f'a_0 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
 
             # az gradient
-            problem_az.assemble_problem(u0, tau)#, u_ex)
+            problem_az.assemble_problem(u0, tau, u_ex)
 
             res = problem_az.minimize(MaxIter, toll)
 

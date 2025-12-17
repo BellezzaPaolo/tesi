@@ -118,6 +118,7 @@ class gradient(abc.ABC):
         :param verbose (bool): specify if print results or not (default True)  
         '''
         converged = False
+        self.MaxIter = MaxIter
 
         t_start = time.time()
 
@@ -184,7 +185,7 @@ class gradient(abc.ABC):
         if show:
             plt.show()
         if save:
-            fig.savefig("./images/plot_b"+str(self.beta.values()[0])+"_N"+str(int(1/self.h))+"_tau"+str(self.tau.values()[0])+".png")
+            fig.savefig("./images/plot_b"+str(self.beta.values()[0])+"_N"+str(int(1/self.h))+"_tau"+str(self.tau.values()[0])+"_it"+str(self.MaxIter)+".png")
 
 
     def save_data(self, filename, opt_name, res):
