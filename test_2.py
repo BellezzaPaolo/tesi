@@ -9,7 +9,8 @@ import gradients
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
 
-h_v = [12 * 2**(-8)]#, 12 * 2**(-10), 12 * 2**(-12)] needs to be generated the ground thruth for smaller h
+h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
+# h_v = [12 * 2**(-8)]
 beta = 1000
 tau_az = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
 tau_L2 = [0.1, 0.5, 1., 1.5, 2., 2.5, 3., 5., 10., 100., 1000.]
@@ -17,7 +18,7 @@ tau_L2 = [0.1, 0.5, 1., 1.5, 2., 2.5, 3., 5., 10., 100., 1000.]
 MaxIter = 50
 toll = 1e-5
 
-filename_results = './results/test_2(1).csv'
+filename_results = './results/test_2_pointwise_itself.csv'
 
 
 with open(filename_results, "a", newline="") as f:

@@ -163,7 +163,7 @@ class gradient(abc.ABC):
 
         return res
 
-    def plot_history(self, method_name, show = False):
+    def plot_history(self, method_name, show = False, save = False):
         '''
         Plot the convergence history of the minimization
 
@@ -183,6 +183,8 @@ class gradient(abc.ABC):
         ax[1].grid(True)
         if show:
             plt.show()
+        if save:
+            fig.savefig("./images/plot_b"+str(self.beta.values()[0])+"_N"+str(int(1/self.h))+"_tau"+str(self.tau.values()[0])+".png")
 
 
     def save_data(self, filename, opt_name, res):
