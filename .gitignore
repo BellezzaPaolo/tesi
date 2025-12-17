@@ -3,6 +3,8 @@ Ground_Truth_2/
 __pycache__
 old/*
 results/
+images/
 
 *.pdf
 *.h5
+*.png
