@@ -37,18 +37,49 @@ z'(t) = - (P_{z,X} \circ \nabla_X E)(z(t))
 $$
 
 ## Choices of $X$
-- ### $X = L^2(D)$:
+- ### $X = L^2(D)$ and semi-implicit:
     In this case $R_{L^2}(z) = z$, $P_{z,L^2}(v) = v - \frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$:
     $$
     \nabla_{L^2} E(z) = - \Delta z + V z + \beta \|z\|^2 z \qquad or \qquad \nabla_{L^2} E(z) = - \frac{1}{2}\Delta z + V z + \beta \|z\|^2 z
     $$
     the putting all togheter and hiding the part $\frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$ into the normalization, discretize with backward Euler we get:
     $$
+    \tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(z^{n+1})
+    \\
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    $$
+    so apply the weak form to the equation:
+    $$
     \int_D \tilde{z}^{n+1}v dx + \tau \int_D \nabla \tilde{z}^{n+1} \nabla v +V \tilde{z}^{n+1} v + \beta |z^n|^2 \tilde{z}^{n+1} v dx = \int_D u^nv dx
     \qquad or \qquad \int_D \tilde{z}^{n+1}v dx + \tau \int_D \frac{1}{2} \nabla \tilde{z}^{n+1} \nabla v +V \tilde{z}^{n+1} v + \beta |z^n|^2 \tilde{z}^{n+1} v dx = \int_D u^nv dx
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
+- ### $X = L^2(D)$ and explicit:
+    In this case $R_{L^2}(z) = z$, $P_{z,L^2}(v) = v - \frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$:
+    $$
+    \nabla_{L^2} E(z) = - \Delta z + V z + \beta \|z\|^2 z \qquad or \qquad \nabla_{L^2} E(z) = - \frac{1}{2}\Delta z + V z + \beta \|z\|^2 z
+    $$
+    So discretizing fully explicit:
+    $$
+    \tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(z^{n})
+    \\
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    $$
+    so apply the weak form to the equation:
+    $$
+    \int_D \tilde{z}^{n+1} v dx = \int_D z^n v dx - \tau \int_D \nabla z^n \nabla v + Vz^nv + \beta |z^n|^2 z^n v dx + \tau \frac{\int_D \nabla z^n \nabla z^n + Vz^n z^n + \beta |z^n|^2 z^n z^n dx}{\|z\|^2} \int_D z^n v dx
+    \\
+    or
+    \\
+    \int_D \tilde{z}^{n+1} v dx = \int_D z^n v dx - \tau \int_D \frac{1}{2}\nabla z^n \nabla v + Vz^nv + \beta |z^n|^2 z^n v dx + \tau \frac{\int_D \frac{1}{2}\nabla z^n \nabla z^n + Vz^n z^n + \beta |z^n|^2 z^n z^n dx}{\|z\|^2} \int_D z^n v dx
+
+    \\
+
+
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    $$  
+
 - ### $X = H^1(D)$ and inner product $(.,.)_{H^1} = (\nabla ., \nabla .)_{L^2}$:
     In this case:
     $$
@@ -58,10 +89,16 @@ $$
     $$
     So it's needed to solve 2 previous subproblems and then:
     $$
-    \int_D \tilde{z}^{n+1}v dx = \int_D z^n v dx - \tau \int_D \nabla E_{H^1}(z^n) v dx + \tau \frac{\int_D \nabla E_{H^1}(z^n)z^n*dx}{\int_D R_{H^1}(z^n) z^n dx} \int_D R_{H^1}(z^n) v dx
+    \tilde z^{n+1} = z^n - \tau \nabla_{H^1} E(z^{n}) - \tau \frac{(\nabla_{H^1}E(z^n),z^n)_{L^2}}{(R_{H^1}(z^n),z^n)_{L^2}} R_{H^1}(z^n)
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
+    so it's possible to assign pointwise(?)
+    <!-- $$
+    \int_D \tilde{z}^{n+1}v dx = \int_D z^n v dx - \tau \int_D \nabla E_{H^1}(z^n) v dx + \tau \frac{\int_D \nabla E_{H^1}(z^n)z^n*dx}{\int_D R_{H^1}(z^n) z^n dx} \int_D R_{H^1}(z^n) v dx
+    \\
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    $$ -->
 - ### $X = H^1_0(D) $ and inner product $a_0(.,.) = \int_D \frac{1}{2}\nabla . \nabla . + V . .dx$:
     In this case Reisz:
     $$
@@ -84,12 +121,19 @@ $$
     \nabla _{a_0} E(z) = z + R_{a_0}(\beta |z|^2 z)
     $$
 
-    the iteration is:
+    so discretize the equation with forward Euler:
+    $$
+    \tilde z^{n+1} =z^n - \tau z^n - \tau R_{a_0}(\beta |z|^2z) + \tau \frac{(z^n + R_{a_0}(\beta |z^n|^2 z^n), z^n)_{L^2}}{(R_{a_0}(z^n),z^n)_{L^2}}R_{a_0}(z^n)
+    \\
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    $$
+    this assignment could be done pointwise(?).
+    <!-- the iteration is:
     $$
     \int_D \tilde{z}^{n+1} w dx = \int_D \tilde{z}^{n} w dx - \tau * \int_D (z^n + R_{a_0}(\beta |z^n|^2 z^n))w dx + \tau \frac{\int_D (z^n + R_{a_0}(\beta |z^n|^2 z^n))z^n dx}{\int_D R_{a_0}(z^n)z^n dx} \int_D R_{a_0}(z^n)wdx
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
-    $$ 
+    $$  -->
 - ### $ X = H^1_0(D) $ and inner product $a_z(.,.) = \int_D \frac{1}{2} \nabla . \nabla . + V . . + \beta |z|^2 . . dx$:
     In this case the Riesz projectionis given by:
     $$
@@ -105,7 +149,22 @@ $$
     $$
     So the final formula:
     $$
-    \int_D \tilde{z}^{n+1} w dx = \int_D z^{n} w dx - \tau  \int_D  z^{n} w dx + \tau \frac{\int_D z^n z^n dx}{\int_D R_{a_z}(z^n)z^n dx} \int_D R_{a_z}(z^n) w dx
+    \tilde z^{n+1} = z^n - \tau z^n + \tau \frac{(z^n,z^n)_{L^2}}{(z^n,R_{a_z(z^n)})_{L^2}}R_{a_z}(z^n)
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
+    also pointwise(?)
+    <!-- $$
+    \int_D \tilde{z}^{n+1} w dx = \int_D z^{n} w dx - \tau  \int_D  z^{n} w dx + \tau \frac{\int_D z^n z^n dx}{\int_D R_{a_z}(z^n)z^n dx} \int_D R_{a_z}(z^n) w dx
+    \\
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    $$ -->
+
+
+TODO:
+- [ x ]CONTROLLARE IL CODICE 
+- [ x ]PAPER CITATI ED ALTRI ESPERIMETNI NUMERICI
+- [ x ]CAMBIARE H E VEDERE LA CONVERGENZA
+
+- [  ]TANTE PRIME ITERATE CON VARI h
+- [  ]VERO GRADINETE L2 (BAO 12) CON MASS LAMPING FORSE
