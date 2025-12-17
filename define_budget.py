@@ -7,7 +7,7 @@ def compute_times(log2h):
     h = 2**log2h
     beta = 10
     tau = 0.2
-    filename_results = './results/Budget_defintion.csv'
+    filename_results = './results/Budget_definition_pointwise.csv'
 
     import firedrake as fd
     import gradients
@@ -26,19 +26,19 @@ def compute_times(log2h):
     # beta distribution
     u0 = rg.beta(W, 1.0, 2.0)
 
-    dummy_problem =gradients.dummy_gradient(beta, v, W, bcs, h)
-    dummy_problem.assemble_problem(u0, tau)
-    dummy_problem.step()
-
-    problem_L2 = gradients.gradient_L2(beta, v, W, bcs, h)
     # L2 gradient
-    t0 = time.time()
-    problem_L2.assemble_problem(u0, tau)#, u_ex)
-    time_assemble = time.time() - t0
+    problem_L2 = gradients.gradient_L2(beta, v, W, bcs, h)
 
-    t0 = time.time()
+
+    problem_L2.assemble_problem(u0, tau)
+    t0 = time.perf_counter()
+    problem_L2.assemble_problem(u0, tau)#, u_ex)
+    time_assemble = time.perf_counter() - t0
+
     problem_L2.step()
-    time_step = time.time() - t0
+    t1 = time.perf_counter()
+    problem_L2.step()
+    time_step = time.perf_counter() - t1
 
     print(f'h: {h}, N: {N}, time assemble: {time_assemble}, time step: {time_step}')
 
@@ -46,15 +46,18 @@ def compute_times(log2h):
         writer = csv.writer(file)
         writer.writerow(['L2',h, N, time_assemble, time_step])
 
-    problem_H1 = gradients.gradient_H1(beta, v, W, bcs, h)
     # H1 gradient
+    problem_H1 = gradients.gradient_H1(beta, v, W, bcs, h)
+
+    problem_H1.assemble_problem(u0, tau)
     t0 = time.time()
     problem_H1.assemble_problem(u0, tau)#, u_ex)
     time_assemble = time.time() - t0
 
-    t0 = time.time()
     problem_H1.step()
-    time_step = time.time() - t0
+    t1 = time.time()
+    problem_H1.step()
+    time_step = time.time() - t1
     print(f'h: {h}, N: {N}, time assemble: {time_assemble}, time step: {time_step}')
 
     with open(filename_results, mode='a', newline='') as file:
@@ -63,13 +66,15 @@ def compute_times(log2h):
 
     # a_0 gradient
     problem_a0 = gradients.gradient_a0(beta, v, W, bcs, h)
+    problem_a0.assemble_problem(u0, tau)
     t0 = time.time()
     problem_a0.assemble_problem(u0, tau)
     time_assemble = time.time() - t0
 
-    t0 = time.time()
     problem_a0.step()
-    time_step = time.time() - t0
+    t1 = time.time()
+    problem_a0.step()
+    time_step = time.time() - t1
 
     print(f'h: {h}, N: {N}, time assemble: {time_assemble}, time step: {time_step}')
 
@@ -79,13 +84,15 @@ def compute_times(log2h):
 
     # az gradient
     problem_az = gradients.gradient_az(beta, v, W, bcs, h)
+    problem_az.assemble_problem(u0,tau)
     t0 = time.time()
     problem_az.assemble_problem(u0, tau)
     time_assemble = time.time() - t0
 
-    t0 = time.time()
     problem_az.step()
-    time_step = time.time() - t0
+    t1 = time.time()
+    problem_az.step()
+    time_step = time.time() - t1
 
     print(f'h: {h}, N: {N}, time assemble: {time_assemble}, time step: {time_step}')
 
@@ -97,12 +104,14 @@ def plotting():
     import matplotlib.pyplot as plt
     import pandas as pd
 
-    df = pd.read_csv('./results/Budget_defintion.csv',
+    df = pd.read_csv('./results/Budget_definition_pointwise.csv',
                      dtype={"name_opt": str, "h": float, "N": int, "time_assemble": float, "time_step": float, "time_step2": float, "time_step3": float})
 
-    h = df["h"].unique()
+    discard_first_N = 3 # discard the first point to have better scaling visibility
+
+    h = (df["h"].unique())[discard_first_N:]
     methods = df['name_opt'].unique()
-    N = df['N'].unique()
+    N = (df['N'].unique())[discard_first_N:]
     
     T_assemble = []
     T_step = []
@@ -119,16 +128,17 @@ def plotting():
         T_assemble.append((method,Ta_m))
         T_step.append((method,Ts_m))
 
-    fig, ax = plt.subplots(1,2, figsize=(24,12))
+    fig, ax = plt.subplots(2,1, figsize=(6,12))
 
     ax[0].set_title('Assemble Time')
     ax[0].set_yscale('log', base = 2)
     ax[0].set_xscale('log', base = 2)
     ax[0].plot(N, N/N[0], 'k--', label='O(N)')
-    ax[0].plot(N, (N/N[0])**2, 'k-.', label='O(N^2)')
-    ax[0].plot(N, (N/N[0])**3, 'k:', label='O(N^3)')
+    ax[0].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
     for method, Ta_m in T_assemble:
         ax[0].plot(N, Ta_m/Ta_m[0], 'o-', label=method)
+    ax[0].plot(N,(N/N[0])**1.5, 'k*',label = 'O(N^1.5)')
+    ax[0].plot(N,(N/N[0])**0.5, 'k.',label = 'O(N^0.5)')
     ax[0].set_xlabel('N')
     ax[0].set_ylabel('Time assemble [s]')
     ax[0].legend()
@@ -138,10 +148,10 @@ def plotting():
     ax[1].set_yscale('log', base = 2)
     ax[1].set_xscale('log', base = 2)
     ax[1].plot(N, (N/N[0]), 'k--', label='O(N)')
-    ax[1].plot(N, (N/N[0])**2, 'k-.', label='O(N^2)')
-    #ax[1].plot(h, h**-3, 'k:', label='O(N^-3)')
+    ax[1].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
     for method, Ts1_m in T_step:
         ax[1].plot(N, Ts1_m/Ts1_m[0], 'o-', label=method)
+    ax[1].plot(N,(N/N[0])**0.75, 'k*',label = 'O(N^0.75)')
     ax[1].set_xlabel('N')
     ax[1].set_ylabel('Time step [s]')
     ax[1].legend()
