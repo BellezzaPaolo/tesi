@@ -163,7 +163,7 @@ class gradient(abc.ABC):
 
         return res
 
-    def plot_history(self, method_name):
+    def plot_history(self, method_name, show = False):
         '''
         Plot the convergence history of the minimization
 
@@ -181,7 +181,8 @@ class gradient(abc.ABC):
         ax[1].set_ylabel('Energy')
         ax[1].set_title('Energy History')
         ax[1].grid(True)
-        plt.show()
+        if show:
+            plt.show()
 
 
     def save_data(self, filename, opt_name, res):
@@ -196,8 +197,9 @@ class gradient(abc.ABC):
             writer = csv.writer(f)
             writer.writerow([opt_name, self.h, self.beta.values()[0], self.tau.values()[0], res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
 
-class dummy_gradient(gradient):
-    def assemble_problem(self, u0, tau, u_ref = None):
+
+class gradient_L2_fully_expli(gradient):
+    def assemble_problem(self, u0, tau, u_ref = None, lump = True):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -207,12 +209,36 @@ class dummy_gradient(gradient):
         '''
         super().assemble_problem(u0, tau, u_ref)
 
+        if lump:
+            self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs, form_compiler_parameters={"quadrature_rule": "KMV","quadrature_degree": self.W.ufl_element().degree()})
+
+            self.solver_Mass = fd.LinearSolver(self.M)
+        else:
+            self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+            self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+
+        # used only to compute the LU factorization
+        self.solver_Mass.solve(self.uh, fd.assemble(self.u_old * self.w * fd.dx))
+
+        
     def step(self):
         '''
-        Dummy step that does nothing
+        Implements the step of L2 gradient
         '''
-        self.uh.assign(self.u_old)
+
+        intE = fd.assemble(0.5 * fd.dot(fd.grad(self.u_old), fd.grad(self.u_old)) * fd.dx + self.v * self.u_old * self.u_old * fd.dx + self.beta * abs(self.u_old)**2 * self.u_old * self.u_old * fd.dx)
+        intR = fd.assemble(self.u_old * self.u_old * fd.dx)
+
+        rhs = fd.assemble( self.u_old * self.w * fd.dx \
+            - self.tau * 0.5 * fd.dot(fd.grad(self.u_old), fd.grad(self.w)) * fd.dx \
+            - self.tau * self.v * self.u_old * self.w * fd.dx \
+            - self.tau * self.beta * (self.u_old ** 2 * self.u_old) * self.w * fd.dx \
+            + self.tau * intE/intR * self.u_old * self.w * fd.dx)
+            
+        self.solver_Mass.solve(self.uh, rhs)
         
+
+
 class gradient_L2(gradient):
     def assemble_problem(self, u0, tau, u_ref = None):
         '''
@@ -261,9 +287,12 @@ class gradient_H1(gradient):
         self.gradE = fd.Function(self.W)
         self.solver_Stiffnes = fd.LinearSolver(self.A, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
-        # assemble the solver for the gradient
-        self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
-        self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        # used only to compute the LU factorization
+        self.solver_Stiffnes.solve(self.R_u, fd.assemble(self.u_old * self.w * fd.dx))
+
+        # # assemble the solver for the gradient
+        # self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+        # self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
     def step(self):
         '''
@@ -286,11 +315,12 @@ class gradient_H1(gradient):
         intE = fd.assemble(self.gradE * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
-                - self.tau * self.gradE * self.w * fd.dx \
-                + self.tau * intE/intR * self.R_u * self.w * fd.dx)
+        # rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
+        #         - self.tau * self.gradE * self.w * fd.dx \
+        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx)
         
-        self.solver_Mass.solve(self.uh, rhs_u)
+        # self.solver_Mass.solve(self.uh, rhs_u)
+        self.uh.assign(self.u_old - self.tau * self.gradE + self.tau * intE/intR * self.R_u)
 
             
 class gradient_a0(gradient):
@@ -313,10 +343,13 @@ class gradient_a0(gradient):
 
         self.solver_Stiffness = fd.LinearSolver(self.A, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
-        # assemble the solver for the solution
-        self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+        # used only to compute the LU factorization
+        self.solver_Stiffness.solve(self.R_u, fd.assemble(self.u_old * self.w * fd.dx))
 
-        self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        # assemble the solver for the solution
+        # self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+
+        # self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
 
     def step(self):
@@ -335,12 +368,12 @@ class gradient_a0(gradient):
         intE = fd.assemble((self.u_old + self.R_u2u) * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
-                - self.tau * (self.u_old + self.R_u2u) * self.w * fd.dx \
-                + self.tau * intE/intR * self.R_u * self.w * fd.dx)
+        # rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
+        #         - self.tau * (self.u_old + self.R_u2u) * self.w * fd.dx \
+        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx)
         
-        self.solver_Mass.solve(self.uh, rhs_u)
-
+        # self.solver_Mass.solve(self.uh, rhs_u)
+        self.uh.assign((1 - self.tau) * self.u_old  - self.tau * self.R_u2u + self.tau * intE/intR * self.R_u)
 
 class gradient_az(gradient):
     def assemble_problem(self, u0, tau, u_ref = None):
@@ -360,9 +393,9 @@ class gradient_az(gradient):
                 + self.v * self.u * self.w * fd.dx
 
         # assemble ths solver for the solution
-        self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
+        # self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
 
-        self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        # self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
         
     
     def step(self):
@@ -383,7 +416,9 @@ class gradient_az(gradient):
         intE = fd.assemble(self.u_old * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        rhs_u = fd.assemble((1 - self.tau) * self.u_old * self.w * fd.dx \
-                + self.tau * intE/intR * self.R_u * self.w * fd.dx)
+        # rhs_u = fd.assemble((1 - self.tau) * self.u_old * self.w * fd.dx \
+        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx)
         
-        self.solver_Mass.solve(self.uh, rhs_u)
+        # self.solver_Mass.solve(self.uh, rhs_u)
+
+        self.uh.assign((1 - self.tau) * self.u_old + self.tau * intE/intR * self.R_u)
