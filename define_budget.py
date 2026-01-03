@@ -107,7 +107,7 @@ def plotting():
     df = pd.read_csv('./results/Budget_definition_pointwise.csv',
                      dtype={"name_opt": str, "h": float, "N": int, "time_assemble": float, "time_step": float, "time_step2": float, "time_step3": float})
 
-    discard_first_N = 3 # discard the first point to have better scaling visibility
+    discard_first_N = 0 # discard the first point to have better scaling visibility
 
     h = (df["h"].unique())[discard_first_N:]
     methods = df['name_opt'].unique()

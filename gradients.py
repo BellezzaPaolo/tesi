@@ -26,7 +26,7 @@ class gradient(abc.ABC):
         :param h (float): step of spatial discretization
         '''
         # pde parameters
-        self.beta = fd.Constant(beta)
+        self.beta = beta #fd.Constant(beta)
         self.v = v
 
         # solution space
@@ -58,7 +58,7 @@ class gradient(abc.ABC):
 
             return E
         else:
-            self.E = 0.5 * fd.assemble(( 0.5 * fd.dot(fd.grad(self.uh), fd.grad(self.uh)) + self.v * self.uh**2 + self.beta/2 * abs(self.uh) **4) * fd.dx)
+            self.E = 0.5 * fd.assemble(( 0.5 * fd.dot(fd.grad(self.uh), fd.grad(self.uh)) + self.v * self.uh**2) * fd.dx + self.beta/2 * abs(self.uh) **4 * fd.dx)
 
     def compute_lambda(self):
         '''
@@ -66,11 +66,11 @@ class gradient(abc.ABC):
         '''
         self.energy()
 
-        self.lam = 2 * self.E + self.beta.values()[0]/2 * fd.norm(self.uh,'L4')**4
+        self.lam = 2 * self.E + self.beta /2 * fd.norm(self.uh,'L4')**4
         
         return self.lam
     
-    def assemble_problem(self, u0, tau, u_ref = None):
+    def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
         '''
         Inizialize and assembles all forms related to the minimization
         
@@ -84,18 +84,15 @@ class gradient(abc.ABC):
 
         norm = fd.norm(u0,'L2')
         self.u_old.interpolate(u0/norm)
+
+        self.non_lin_coefficient = self.beta * abs(u0)**2
         
-        if u_ref is not None:
+        if u_ref is not None and E_ref is None:
             self.E_ref = self.energy(u_ref)
+        elif E_ref is not None and u_ref is None:
+            self.E_ref = E_ref
         else:
-            if self.beta.values()[0] == 10.0:
-                self.E_ref = 0.79620688
-            elif self.beta.values()[0] == 100.0:
-                self.E_ref = 1.97298868
-            elif self.beta.values()[0] == 1000.0:
-                self.E_ref = 5.99303235
-            else:
-                print('Warning: reference energy not known, using initial guess energy as reference. beta value:', self.beta.values()[0])
+            print('Warning: reference energy not known, given values of E_ref and u_ref not compatible.' )
 
         self.E = 0.
         self.lam = 0.
@@ -170,7 +167,7 @@ class gradient(abc.ABC):
 
         :param method_name (string): name of the gradient method used'''
         fig, ax = plt.subplots(2,1, figsize=(5,10))
-        fig.suptitle(f'{method_name}_gradient with h={self.h}, beta={self.beta.values()[0]}, tau={self.tau.values()[0]}')
+        fig.suptitle(f'{method_name}_gradient with h={self.h}, beta={self.beta }, tau={self.tau }')
         ax[0].semilogy(range(1,len(self.histoy_E)+1), [abs(E - self.E_ref)/self.E_ref for E in self.histoy_E], marker='o')
         ax[0].set_xlabel('Iteration')
         ax[0].set_ylabel('Relative Error on Energy')
@@ -185,7 +182,7 @@ class gradient(abc.ABC):
         if show:
             plt.show()
         if save:
-            fig.savefig("./images/plot_b"+str(self.beta.values()[0])+"_N"+str(int(1/self.h))+"_tau"+str(self.tau.values()[0])+"_it"+str(self.MaxIter)+".png")
+            fig.savefig("./images/plot_b"+str(self.beta )+"_N"+str(int(1/self.h))+"_tau"+str(self.tau )+"_it"+str(self.MaxIter)+"_no_lump.png")
 
 
     def save_data(self, filename, opt_name, res):
@@ -198,11 +195,11 @@ class gradient(abc.ABC):
         '''
         with open(filename, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([opt_name, self.h, self.beta.values()[0], self.tau.values()[0], res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
+            writer.writerow([opt_name, self.h, self.beta , self.tau , res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
 
 
 class gradient_L2_fully_expli(gradient):
-    def assemble_problem(self, u0, tau, u_ref = None, lump = True):
+    def assemble_problem(self, u0, tau, u_ref = None, E_ref = None, lump = True):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -210,7 +207,7 @@ class gradient_L2_fully_expli(gradient):
         :param tau (float): time step
         :param u_ref (fd.Function): reference solution
         '''
-        super().assemble_problem(u0, tau, u_ref)
+        super().assemble_problem(u0, tau, u_ref, E_ref)
 
         if lump:
             self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs, form_compiler_parameters={"quadrature_rule": "KMV","quadrature_degree": self.W.ufl_element().degree()})
@@ -243,7 +240,7 @@ class gradient_L2_fully_expli(gradient):
 
 
 class gradient_L2(gradient):
-    def assemble_problem(self, u0, tau, u_ref = None):
+    def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -251,7 +248,7 @@ class gradient_L2(gradient):
         :param tau (float): time step
         :param u_ref (fd.Function): reference solution
         '''
-        super().assemble_problem(u0, tau, u_ref)
+        super().assemble_problem(u0, tau, u_ref, E_ref)
 
         self.a = self.u * self.w * fd.dx \
             + self.tau * 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
@@ -272,7 +269,7 @@ class gradient_L2(gradient):
 
 
 class gradient_H1(gradient):
-    def assemble_problem(self, u0, tau, u_ref = None):
+    def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -281,7 +278,7 @@ class gradient_H1(gradient):
         :param u_ref (fd.Function): reference solution
         '''
 
-        super().assemble_problem(u0, tau, u_ref)
+        super().assemble_problem(u0, tau, u_ref, E_ref)
 
         self.A = fd.assemble(0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx, bcs = self.bcs)
 
@@ -327,7 +324,7 @@ class gradient_H1(gradient):
 
             
 class gradient_a0(gradient):
-    def assemble_problem(self, u0, tau, u_ref = None):
+    def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -335,7 +332,7 @@ class gradient_a0(gradient):
         :param tau (float): time step
         :param u_ref (fd.Function): reference solution
         '''
-        super().assemble_problem(u0, tau, u_ref)
+        super().assemble_problem(u0, tau, u_ref, E_ref)
 
         # assemble the solver for Riesz projections
         self.R_u = fd.Function(self.W)
@@ -379,7 +376,7 @@ class gradient_a0(gradient):
         self.uh.assign((1 - self.tau) * self.u_old  - self.tau * self.R_u2u + self.tau * intE/intR * self.R_u)
 
 class gradient_az(gradient):
-    def assemble_problem(self, u0, tau, u_ref = None):
+    def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -387,12 +384,12 @@ class gradient_az(gradient):
         :param tau (float): time step
         :param u_ref (fd.Function): reference solution
         '''
-        super().assemble_problem(u0, tau, u_ref)
+        super().assemble_problem(u0, tau, u_ref, E_ref)
 
         # initialize the forms for the Riesz solver
         self.R_u = fd.Function(self.W)
 
-        self.a = 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
+        self.a = 0.5 * fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
                 + self.v * self.u * self.w * fd.dx
 
         # assemble ths solver for the solution
@@ -408,7 +405,11 @@ class gradient_az(gradient):
         # compute Riesz
         rhs_R = self.u_old * self.w * fd.dx
 
-        problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(self.u_old)**2 * self.u * self.w * fd.dx,
+        # for i in range(self.u_old.dat.data.shape[0]):
+        #     self.u2.dat.data[i] = abs(self.u_old.dat.data[i]) ** 2
+        self.non_lin_coefficient = self.beta * abs(self.u_old)**2
+
+        problem_R = fd.LinearVariationalProblem(self.a + self.non_lin_coefficient * self.u * self.w * fd.dx,
                                                 rhs_R,
                                                 self.R_u,
                                                 self.bcs)

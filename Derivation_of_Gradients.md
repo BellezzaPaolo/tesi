@@ -168,3 +168,5 @@ TODO:
 
 - [ x ]TANTE PRIME ITERATE CON VARI h
 - [ x ]VERO GRADINETE L2 (BAO 12) CON MASS LAMPING FORSE
+
+- [  ] controlalre quadrature per la non-linearità 

@@ -8,3 +8,6 @@ images/
 *.pdf
 *.h5
 *.png
+
+NG_solve/test_1_ngsolve.py
+test_chat.py
