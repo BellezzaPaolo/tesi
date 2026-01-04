@@ -1,6 +1,7 @@
 from gradients_NG import *
 import ngsolve as ng
 from netgen.geom2d import SplineGeometry
+import csv
 
 
 hmax_v = [12 * 2**(-8)] #0.046875
@@ -14,6 +15,13 @@ toll = 1e-5
 E_ref = {1000: 5.9930293858250465, 100: 1.972982094492599, 10: 0.7961881636763722}
 #        1000: 5.99303235          100: 1.97298868         10: 0.79620688
 initial_guess = 'normalized gaussian'
+
+filename = '../results/test_NG_1.csv'
+
+with open(filename, "a", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
+
 
 for hmax in hmax_v:
     for beta in beta_v:
@@ -30,6 +38,9 @@ for hmax in hmax_v:
             # L2 gradient
             grad_L2.assemble_problem(initial_guess, tau, E_ref[beta])
             res = grad_L2.minimize(MaxIter, toll)
+
+            grad_L2.save_data(filename, 'L2', res)
+
             if res["converged"]:
                 print(f'L2 minization with h: {hmax}, beta: {beta}, tau: {tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
             else:
@@ -38,6 +49,9 @@ for hmax in hmax_v:
             # az gradient
             grad_az.assemble_problem(initial_guess, tau, E_ref[beta])
             res = grad_az.minimize(MaxIter, toll)
+
+            grad_az.save_data(filename, 'az', res)
+
             if res["converged"]:
                 print(f'az minization with h: {hmax}, beta: {beta}, tau: {tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
             else:

@@ -17,6 +17,8 @@ class GradientsNG(abc.ABC):
         self.beta = beta
         if potential == 'Harmonic':
             self.potential = 0.5 * (ng.x**2 + ng.y**2)
+        elif potential == 'Harmonic and optical lattice':
+            self.potential = 0.5 * (ng.x**2 + ng.y**2) + 20 + 20 * ng.sin(2 * ng.pi * ng.x) * ng.sin(2 * ng.pi * ng.y)
         else:
             raise ValueError("Potential not recognized")
         
@@ -60,16 +62,22 @@ class GradientsNG(abc.ABC):
         '''
         norm_sq = ng.Integrate(self.uh**2, self.mesh)
         self.uh.vec.data *= 1.0 / ng.sqrt(norm_sq)
-        return norm_sq
+        return ng.Integrate(self.uh**2, self.mesh)
     
     def assemble_problem(self, initial_guess, tau, E_ref):
 
         self.uh_old = ng.GridFunction(self.fes, name="previous solution")
 
-        if initial_guess == 'normalized gaussian' or initial_guess == 'Thomas_Fermi density':
+        if initial_guess == 'normalized gaussian':
             self.uh_old.Set(1.0 / ng.sqrt(ng.pi) * ng.exp(-(ng.x**2 + ng.y**2) / 2.0))
+        elif initial_guess == 'Thomas-Fermi density':
+            mu_tf = ng.sqrt(self.beta/ng.pi)
+            self.uh_old.Set(ng.IfPos(mu_tf - self.potential, ng.sqrt((mu_tf - self.potential)/self.beta), 0.0))
         else:
             ValueError('Initial guess not known')
+        
+        norm = ng.Integrate(self.uh_old**2, self.mesh)
+        self.uh_old.vec.data *= 1.0 / ng.sqrt(norm)
 
         self.tau = tau
 

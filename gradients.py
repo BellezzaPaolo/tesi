@@ -58,7 +58,7 @@ class gradient(abc.ABC):
 
             return E
         else:
-            self.E = 0.5 * fd.assemble(( 0.5 * fd.dot(fd.grad(self.uh), fd.grad(self.uh)) + self.v * self.uh**2) * fd.dx + self.beta/2 * abs(self.uh) **4 * fd.dx)
+            self.E = fd.assemble(( 0.25 * fd.dot(fd.grad(self.uh), fd.grad(self.uh)) + 0.5 * self.v * self.uh**2 + 0.25 * self.beta * abs(self.uh) **4 )* fd.dx)
 
     def compute_lambda(self):
         '''
@@ -403,13 +403,13 @@ class gradient_az(gradient):
         Implements one step of the a_z gradient
         '''
         # compute Riesz
-        rhs_R = self.u_old * self.w * fd.dx
+        rhs_R = fd.inner(self.u_old , self.w) * fd.dx
 
         # for i in range(self.u_old.dat.data.shape[0]):
         #     self.u2.dat.data[i] = abs(self.u_old.dat.data[i]) ** 2
-        self.non_lin_coefficient = self.beta * abs(self.u_old)**2
+        # self.non_lin_coefficient = self.beta * abs(self.u_old)**2
 
-        problem_R = fd.LinearVariationalProblem(self.a + self.non_lin_coefficient * self.u * self.w * fd.dx,
+        problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(self.u_old)**2 * self.u * self.w * fd.dx,
                                                 rhs_R,
                                                 self.R_u,
                                                 self.bcs)
