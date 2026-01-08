@@ -1,6 +1,8 @@
 from gradients_NG import *
 import ngsolve as ng
 from netgen.geom2d import SplineGeometry
+import matplotlib.pyplot as plt
+import numpy as np
 import csv
 
 hmax = 12 * 2**(-8)
@@ -27,6 +29,27 @@ geo.AddRectangle(p1=(-6, -6), p2=(6, 6), bc="outer")
 
 ngmesh = geo.GenerateMesh(maxh=hmax)
 mesh = ng.Mesh(ngmesh)
+
+# v_coords = np.array([p.point for p in mesh.vertices])
+
+# # 3. Extract element connectivity and convert NodeId to int
+# elements = np.array([[v.nr for v in el.vertices] for el in mesh.Elements(ng.VOL)])
+# # 4. Plotting
+# plt.figure(figsize=(8, 8))
+
+# # triplot handles the triangulation grid
+# plt.triplot(v_coords[:, 0], v_coords[:, 1], elements, color='blue', lw=0.5)
+
+# # Optional: Plot the vertices as dots
+# # plt.plot(v_coords[:, 0], v_coords[:, 1], 'k.', markersize=0.5)
+
+# plt.gca().set_aspect('equal')
+# plt.title("NGSolve Mesh for Model Problem 1 (Matplotlib)")
+# plt.xlabel("x")
+# plt.ylabel("y")
+# plt.grid(True, linestyle='--', alpha=0.6)
+# plt.show()
+# exit()
 
 # L2 gradient
 grad_L2 = Gradient_L2(beta, potential, hmax, mesh, order, dirichlet_bcs)

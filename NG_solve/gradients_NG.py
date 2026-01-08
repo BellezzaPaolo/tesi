@@ -1,5 +1,6 @@
 import ngsolve as ng
 import matplotlib.pyplot as plt
+import numpy as np
 import time
 import abc
 import csv
@@ -73,6 +74,8 @@ class GradientsNG(abc.ABC):
         elif initial_guess == 'Thomas-Fermi density':
             mu_tf = ng.sqrt(self.beta/ng.pi)
             self.uh_old.Set(ng.IfPos(mu_tf - self.potential, ng.sqrt((mu_tf - self.potential)/self.beta), 0.0))
+        elif initial_guess == 'random':
+            self.uh_old.vec.data = np.random.randn(self.fes.ndof)
         else:
             ValueError('Initial guess not known')
         
