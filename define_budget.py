@@ -2,12 +2,13 @@ import csv
 import time
 import argparse
 import sys
+import numpy as np
 
 def compute_times(log2h):
     h = 2**log2h
     beta = 10
     tau = 0.2
-    filename_results = './results/Budget_definition_pointwise.csv'
+    filename_results = './results/Budget_definition_pointwise_all_default.csv'
 
     import firedrake as fd
     import gradients

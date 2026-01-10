@@ -84,8 +84,6 @@ class gradient(abc.ABC):
 
         norm = fd.norm(u0,'L2')
         self.u_old.interpolate(u0/norm)
-
-        self.non_lin_coefficient = self.beta * abs(u0)**2
         
         if u_ref is not None and E_ref is None:
             self.E_ref = self.energy(u_ref)
@@ -122,9 +120,6 @@ class gradient(abc.ABC):
         for i in range(MaxIter):
             # compute new soltution
             self.step()
-
-            # normalize
-            self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
 
             self.energy()
 
@@ -236,6 +231,9 @@ class gradient_L2_fully_expli(gradient):
             + self.tau * intE/intR * self.u_old * self.w * fd.dx)
             
         self.solver_Mass.solve(self.uh, rhs)
+
+        # normalize
+        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
         
 
 
@@ -267,6 +265,9 @@ class gradient_L2(gradient):
         solver =  fd.LinearVariationalSolver(problem)#, solver_parameters=param)
         solver.solve()
 
+        # normalize
+        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
+
 
 class gradient_H1(gradient):
     def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
@@ -285,7 +286,7 @@ class gradient_H1(gradient):
         # assemble the solver for the Riesz rappresentation and gradient
         self.R_u = fd.Function(self.W)
         self.gradE = fd.Function(self.W)
-        self.solver_Stiffnes = fd.LinearSolver(self.A, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        self.solver_Stiffnes = fd.LinearSolver(self.A)#, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
         # used only to compute the LU factorization
         self.solver_Stiffnes.solve(self.R_u, fd.assemble(self.u_old * self.w * fd.dx))
@@ -322,6 +323,9 @@ class gradient_H1(gradient):
         # self.solver_Mass.solve(self.uh, rhs_u)
         self.uh.assign(self.u_old - self.tau * self.gradE + self.tau * intE/intR * self.R_u)
 
+        # normalize
+        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
+
             
 class gradient_a0(gradient):
     def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
@@ -341,7 +345,7 @@ class gradient_a0(gradient):
         self.A = fd.assemble(0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx\
                                 + self.v * self.u * self.w * fd.dx, bcs = self.bcs)
 
-        self.solver_Stiffness = fd.LinearSolver(self.A, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        self.solver_Stiffness = fd.LinearSolver(self.A)#, solver_parameters={'mat_type': 'aij', 'ksp_type': 'preonly', 'ksp_rtol': 1e-05, 'pc_type': 'lu', 'pc_factor_mat_solver_type': 'mumps', 'pc_factor_mat_mumps_icntl_14': 200, "ksp_view": None})
 
         # used only to compute the LU factorization
         self.solver_Stiffness.solve(self.R_u, fd.assemble(self.u_old * self.w * fd.dx))
@@ -374,6 +378,9 @@ class gradient_a0(gradient):
         
         # self.solver_Mass.solve(self.uh, rhs_u)
         self.uh.assign((1 - self.tau) * self.u_old  - self.tau * self.R_u2u + self.tau * intE/intR * self.R_u)
+
+        # normalize
+        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
 
 class gradient_az(gradient):
     def assemble_problem(self, u0, tau, u_ref = None, E_ref = None):
@@ -409,15 +416,18 @@ class gradient_az(gradient):
         #     self.u2.dat.data[i] = abs(self.u_old.dat.data[i]) ** 2
         # self.non_lin_coefficient = self.beta * abs(self.u_old)**2
 
+        # from petsc4py import PETSc
+        # fd.assemble(self.a + self.beta * abs(self.u_old)**2 * self.u * self.w * fd.dx, bcs = self.bcs).M.handle.view(viewer=PETSc.Viewer.STDOUT_WORLD)
+
         problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(self.u_old)**2 * self.u * self.w * fd.dx,
                                                 rhs_R,
                                                 self.R_u,
                                                 self.bcs)
-        solver_R = fd.LinearVariationalSolver(problem_R)
+        solver_R = fd.LinearVariationalSolver(problem_R)#, solver_parameters={"ksp_view": None})
         solver_R.solve()
 
         # compute solution
-        intE = fd.assemble(self.u_old * self.u_old * fd.dx)
+        # intE = fd.assemble(self.u_old * self.u_old * fd.dx) # should be 1 in exact aritmetic because it's simply the norm of hte previous uh
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
         # rhs_u = fd.assemble((1 - self.tau) * self.u_old * self.w * fd.dx \
@@ -425,4 +435,7 @@ class gradient_az(gradient):
         
         # self.solver_Mass.solve(self.uh, rhs_u)
 
-        self.uh.assign((1 - self.tau) * self.u_old + self.tau * intE/intR * self.R_u)
+        self.uh.assign((1 - self.tau) * self.u_old + self.tau * 1/intR * self.R_u)
+
+        # normalize
+        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))

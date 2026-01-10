@@ -10,20 +10,20 @@ xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
 
 # h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
-h_v = [12 * 2**(-8)]#,12 * 2**(-8)]
+h_v = [12 * 2**(-8)]#[12 * 2**(-6),12 * 2**(-8)]
 beta_v = [10, 100, 1000]
 # tau_v = [0.01, 0.005, 0.001]
 tau_v = [1, 0.5]
 
-MaxIter = 200
+MaxIter = 100
 toll = 1e-5
 
-filename_results = './results/test_1_no_GT.csv'#pointwise_itself.csv'
+filename_results = './results/test_1_prove.csv'#pointwise_itself.csv'
 
 
 with open(filename_results, "a", newline="") as f:
     writer = csv.writer(f)
-    writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time (quadratic)'])
+    writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
 
 E_ref = {10: 0.79620688, 100: 1.97298868, 1000: 5.99303235}
 #        10: 0.79620688, 100: 1.97298868, 1000: 5.99303235
@@ -34,7 +34,7 @@ for h in h_v:
         ny = int((ymax-ymin)/h)
         # filename_ref = './Ground_Truth_1/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
         # mesh, u_ex = utils.load_ground_truth(filename_ref)
-        mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX = xmin, originY = ymin, quadrilateral = True)#, diagonal = 'left')
+        mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX = xmin, originY = ymin, diagonal = 'left')
         W = fd.FunctionSpace(mesh, 'CG',1)
 
         # Data and boundary conditions
@@ -65,12 +65,12 @@ for h in h_v:
 
 
             #L2 gradient fully explicit
-            problem_L2_e.assemble_problem(u0, tau, u_ex, lump = False)
+            # problem_L2_e.assemble_problem(u0, tau, u_ex, lump = False)
 
-            res = problem_L2_e.minimize(MaxIter, toll)
+            # res = problem_L2_e.minimize(MaxIter, toll)
 
-            problem_L2_e.save_data(filename_results, 'L2_e',res)
-            problem_L2_e.plot_history('L2_e', save = True)
+            # problem_L2_e.save_data(filename_results, 'L2_e',res)
+            # problem_L2_e.plot_history('L2_e', save = True)
             
             # if res["converged"]:
             #     print(f'fully explicit L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
