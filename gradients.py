@@ -201,18 +201,22 @@ class gradient_L2_fully_expli(gradient):
         :param u0 (fd.Function): initial guess
         :param tau (float): time step
         :param u_ref (fd.Function): reference solution
+        :param E_ref (float): reference energy
+        :param lump (bool): decides if the system is solved with lumping or not
         '''
         super().assemble_problem(u0, tau, u_ref, E_ref)
 
+        # assemble the mass matrix with or without lumping
         if lump:
             self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs, form_compiler_parameters={"quadrature_rule": "KMV","quadrature_degree": self.W.ufl_element().degree()})
 
             self.solver_Mass = fd.LinearSolver(self.M)
         else:
             self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
-            self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+            # NOTE: the default solver of firedrake is lu so this parameter are useless
+            self.solver_Mass = fd.LinearSolver(self.M) # solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
-        # used only to compute the LU factorization
+        # one solution of the linear system used only to compute the LU factorization
         self.solver_Mass.solve(self.uh, fd.assemble(self.u_old * self.w * fd.dx))
 
         
@@ -220,8 +224,9 @@ class gradient_L2_fully_expli(gradient):
         '''
         Implements the step of L2 gradient
         '''
-
+        # intE = ∫ 0.5 ∇u∇u + Vu^2 + β |u|^2 uudx
         intE = fd.assemble(0.5 * fd.dot(fd.grad(self.u_old), fd.grad(self.u_old)) * fd.dx + self.v * self.u_old * self.u_old * fd.dx + self.beta * abs(self.u_old)**2 * self.u_old * self.u_old * fd.dx)
+        # intR = ∫ u^2 dx
         intR = fd.assemble(self.u_old * self.u_old * fd.dx)
 
         rhs = fd.assemble( self.u_old * self.w * fd.dx \
@@ -229,7 +234,8 @@ class gradient_L2_fully_expli(gradient):
             - self.tau * self.v * self.u_old * self.w * fd.dx \
             - self.tau * self.beta * (self.u_old ** 2 * self.u_old) * self.w * fd.dx \
             + self.tau * intE/intR * self.u_old * self.w * fd.dx)
-            
+        
+        # M u^n+1 = Mu^n - τ ( 0.5 * A + v M + β N(u^2) )u^n + τ intE/intR * Mu^n
         self.solver_Mass.solve(self.uh, rhs)
 
         # normalize
@@ -245,6 +251,7 @@ class gradient_L2(gradient):
         :param u0 (fd.Function): initial guess
         :param tau (float): time step
         :param u_ref (fd.Function): reference solution
+        :param E_ref (float): reference energy
         '''
         super().assemble_problem(u0, tau, u_ref, E_ref)
 
@@ -291,10 +298,6 @@ class gradient_H1(gradient):
         # used only to compute the LU factorization
         self.solver_Stiffnes.solve(self.R_u, fd.assemble(self.u_old * self.w * fd.dx))
 
-        # # assemble the solver for the gradient
-        # self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
-        # self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
-
     def step(self):
         '''
         Implements a step of the gradient H1
@@ -316,11 +319,6 @@ class gradient_H1(gradient):
         intE = fd.assemble(self.gradE * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        # rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
-        #         - self.tau * self.gradE * self.w * fd.dx \
-        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx)
-        
-        # self.solver_Mass.solve(self.uh, rhs_u)
         self.uh.assign(self.u_old - self.tau * self.gradE + self.tau * intE/intR * self.R_u)
 
         # normalize
@@ -350,10 +348,6 @@ class gradient_a0(gradient):
         # used only to compute the LU factorization
         self.solver_Stiffness.solve(self.R_u, fd.assemble(self.u_old * self.w * fd.dx))
 
-        # assemble the solver for the solution
-        # self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
-
-        # self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
 
 
     def step(self):
@@ -372,11 +366,6 @@ class gradient_a0(gradient):
         intE = fd.assemble((self.u_old + self.R_u2u) * self.u_old * fd.dx)
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
 
-        # rhs_u = fd.assemble(self.u_old * self.w * fd.dx \
-        #         - self.tau * (self.u_old + self.R_u2u) * self.w * fd.dx \
-        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx)
-        
-        # self.solver_Mass.solve(self.uh, rhs_u)
         self.uh.assign((1 - self.tau) * self.u_old  - self.tau * self.R_u2u + self.tau * intE/intR * self.R_u)
 
         # normalize
@@ -398,11 +387,6 @@ class gradient_az(gradient):
 
         self.a = 0.5 * fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
                 + self.v * self.u * self.w * fd.dx
-
-        # assemble ths solver for the solution
-        # self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs)
-
-        # self.solver_Mass = fd.LinearSolver(self.M, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
         
     
     def step(self):
@@ -411,10 +395,6 @@ class gradient_az(gradient):
         '''
         # compute Riesz
         rhs_R = fd.inner(self.u_old , self.w) * fd.dx
-
-        # for i in range(self.u_old.dat.data.shape[0]):
-        #     self.u2.dat.data[i] = abs(self.u_old.dat.data[i]) ** 2
-        # self.non_lin_coefficient = self.beta * abs(self.u_old)**2
 
         # from petsc4py import PETSc
         # fd.assemble(self.a + self.beta * abs(self.u_old)**2 * self.u * self.w * fd.dx, bcs = self.bcs).M.handle.view(viewer=PETSc.Viewer.STDOUT_WORLD)
@@ -429,11 +409,6 @@ class gradient_az(gradient):
         # compute solution
         # intE = fd.assemble(self.u_old * self.u_old * fd.dx) # should be 1 in exact aritmetic because it's simply the norm of hte previous uh
         intR = fd.assemble(self.R_u * self.u_old * fd.dx)
-
-        # rhs_u = fd.assemble((1 - self.tau) * self.u_old * self.w * fd.dx \
-        #         + self.tau * intE/intR * self.R_u * self.w * fd.dx)
-        
-        # self.solver_Mass.solve(self.uh, rhs_u)
 
         self.uh.assign((1 - self.tau) * self.u_old + self.tau * 1/intR * self.R_u)
 

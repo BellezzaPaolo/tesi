@@ -93,12 +93,7 @@ $$
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
-    so it's possible to assign pointwise(?)
-    <!-- $$
-    \int_D \tilde{z}^{n+1}v dx = \int_D z^n v dx - \tau \int_D \nabla E_{H^1}(z^n) v dx + \tau \frac{\int_D \nabla E_{H^1}(z^n)z^n*dx}{\int_D R_{H^1}(z^n) z^n dx} \int_D R_{H^1}(z^n) v dx
-    \\
-    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
-    $$ -->
+    so it's possible to assign pointwise.
 - ### $X = H^1_0(D) $ and inner product $a_0(.,.) = \int_D \frac{1}{2}\nabla . \nabla . + V . .dx$:
     In this case Reisz:
     $$
@@ -127,13 +122,7 @@ $$
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
-    this assignment could be done pointwise(?).
-    <!-- the iteration is:
-    $$
-    \int_D \tilde{z}^{n+1} w dx = \int_D \tilde{z}^{n} w dx - \tau * \int_D (z^n + R_{a_0}(\beta |z^n|^2 z^n))w dx + \tau \frac{\int_D (z^n + R_{a_0}(\beta |z^n|^2 z^n))z^n dx}{\int_D R_{a_0}(z^n)z^n dx} \int_D R_{a_0}(z^n)wdx
-    \\
-    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
-    $$  -->
+    this assignment could be done pointwise.
 - ### $ X = H^1_0(D) $ and inner product $a_z(.,.) = \int_D \frac{1}{2} \nabla . \nabla . + V . . + \beta |z|^2 . . dx$:
     In this case the Riesz projectionis given by:
     $$
@@ -153,12 +142,7 @@ $$
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
-    also pointwise(?)
-    <!-- $$
-    \int_D \tilde{z}^{n+1} w dx = \int_D z^{n} w dx - \tau  \int_D  z^{n} w dx + \tau \frac{\int_D z^n z^n dx}{\int_D R_{a_z}(z^n)z^n dx} \int_D R_{a_z}(z^n) w dx
-    \\
-    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
-    $$ -->
+    also pointwise
 
 
 TODO:
