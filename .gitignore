@@ -8,9 +8,8 @@ images/
 *.pdf
 *.h5
 *.png
+*.txt
 
 NG_solve/test_1_ngsolve.py
 test_chat.py
 test_gemini.py
-prova.txt
-prova2.txt
