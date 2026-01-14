@@ -60,7 +60,7 @@ class gradient_L2_fully_expli(gradient):
     def __init__(self, W, bcs, h, beta, v):
         super().__init__(W, bcs, h, beta, v,'L2 explicit')
 
-    def assemble_problem(self, tau, lump = True):
+    def assemble_problem(self, tau, lump = False):
         '''
         Allocate and assembles forms and minimization quantities
 

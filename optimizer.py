@@ -66,6 +66,10 @@ class Optimizer(abc.ABC):
         else:
             self.E = fd.assemble(( 0.25 * fd.dot(fd.grad(self.uh), fd.grad(self.uh)) + 0.5 * self.v * self.uh**2 + 0.25 * self.beta * abs(self.uh) **4 )* fd.dx)
 
+    # def energy(self, uh = None):
+    #     if uh is not None:
+    #         print('error')
+    #     self.E = 0.5 * self.lam - fd.assemble(self.beta * 0.25 * self.uh**4  * fd.dx)
     def compute_lambda(self):
         '''
         Compute the lambda associated to the energy of self.uh
@@ -74,6 +78,10 @@ class Optimizer(abc.ABC):
         self.lam = 2 * self.E + self.beta /2 * fd.norm(self.uh,'L4')**4
         
         return self.lam
+
+    # def compute_lambda(self):
+    #     self.lam = fd.assemble((0.5 * fd.dot(fd.grad(self.uh),fd.grad(self.uh)) + self.v * self.uh * self.uh + self.beta * abs(self.u_old ) **2 * self.uh **2 )* fd.dx)
+    #     return self.lam
     
 
     def get_solver(self, grad_type):
@@ -96,7 +104,7 @@ class Optimizer(abc.ABC):
             return gradient_az(self.W, self.bcs, self.h, self.beta, self.v)
             
         else:
-            NotImplementedError('type of Sobolev gradient not implemented. Supported one are: L2, L2expl, H1, a0, az')
+            raise NotImplementedError('type of Sobolev gradient not implemented. Supported one are: L2, L2e, H1, a0, az')
     
     def compile(self, u0, E_ref):
         '''
@@ -148,18 +156,8 @@ class Optimizer(abc.ABC):
             fig.savefig("./images/plot_b"+str(self.beta )+"_N"+str(int(1/self.h))+"_tau"+str(self.tau )+"_it"+str(self.MaxIter)+"_no_lump.png")
 
 
-    def save_data(self, filename, opt_name, res):
-        '''
-        Save minimization result in a csv file
-
-        :param filename (string): path to the csv file 
-        :param opt_name (string): specify which gradient has been used
-        :param res (dict): dictionary taht contains all the important data
-        '''
-        with open(filename, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([opt_name, self.h, self.beta , self.tau , res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
-
+    def save_data(self, filename, res):
+        pass
 
 
 class Gradient_Descent(Optimizer):
@@ -204,6 +202,7 @@ class Gradient_Descent(Optimizer):
 
             self.uh.assign(self.solver.uh)
 
+            self.compute_lambda()
             self.energy()
 
             self.histoy_E.append(self.E)
@@ -244,6 +243,19 @@ class Gradient_Descent(Optimizer):
                 print(f'{self.name_optimizer} minimization using {self.solver.name} gradient NOT converged in {i+1} iterate')
 
         return res
+
+    def save_data(self, filename, res):
+        '''
+        Save minimization result in a csv file
+
+        :param filename (string): path to the csv file 
+        :param opt_name (string): specify which gradient has been used
+        :param res (dict): dictionary that contains all the important data
+        '''
+        with open(filename, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([self.name_optimizer, self.h, self.beta, self.solver.tau, res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
+
 
 class ParaflowS(Optimizer):
     def __init__(self, beta, v, W, bcs, h):
@@ -309,10 +321,10 @@ class ParaflowS(Optimizer):
             self.coarse_solver.step(self.u_old)
             N_iter_coarse +=1
 
-            self.fine_solver.uh = self.u_old
+            self.fine_solver.uh.assign(self.u_old)
             for _ in range(self.Nf):
                 self.fine_solver.step(self.fine_solver.uh)
-                print(f'fine error: {abs(self.energy(self.fine_solver.uh)- self.E_ref) / self.E_ref}')
+                print(f'fine energy: {self.energy(self.fine_solver.uh)} fine error: {abs(self.energy(self.fine_solver.uh)- self.E_ref) / self.E_ref}')
                 N_iter_fine += 1 
 
             self.correction_uh.assign(self.fine_solver.uh - self.coarse_solver.uh) # not necessary, could be done also self.fine_solver.uh.assign(self.fine_solver.uh - self.coarse_solver.uh)
@@ -334,16 +346,23 @@ class ParaflowS(Optimizer):
                 error = abs(self.E - self.E_ref) / self.E_ref
 
                 if verbose:
-                    print(f'    coarse iter {j}, Energy: {self.E:.10f} and error {error:.5f}')
+                    print(f'    coarse iter {j}, Energy: {self.E:.10f} and error {error:.5f}, energy correction: {self.energy(self.correction_uh)}, old energy: {energy_old}')
 
 
-                if self.E > energy_old or error < toll:
-                    print(f'    Exiting because energy: {self.E > energy_old} and error: {error < toll}')
+                if self.E > energy_old:
+                    print('    Exiting energy grow up')
+                    self.uh.assign(self.u_old)
+                    break
+                if error < toll:
+                    print(' Exiting because the error is small enough')
                     break
 
                 energy_old = self.E
                 self.u_old.assign(self.uh)
 
+            self.energy()
+
+            error = abs(self.E - self.E_ref) / self.E_ref
             if verbose:
                 print(f'Iter {i}, Error: {error:.6e}, Energy: {self.E:.10f} and lambda: {self.compute_lambda():.6f}')
 
@@ -356,5 +375,15 @@ class ParaflowS(Optimizer):
 
         print(f'ParaflowS ended in n_coarse calls: {N_iter_coarse} and N-fine calls {N_iter_fine}')
 
-        
-            
+
+    def save_data(self, filename, res):
+        '''
+        Save minimization result in a csv file
+
+        :param filename (string): path to the csv file 
+        :param opt_name (string): specify which gradient has been used
+        :param res (dict): dictionary that contains all the important data
+        '''
+        with open(filename, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([self.name_optimizer, self.h, self.beta, self.fine_solver.tau, self.coarse_solver.tau, res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])

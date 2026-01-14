@@ -3,19 +3,20 @@ import firedrake as fd
 import csv
 import matplotlib.pyplot as plt
 import utils
-import gradients
+from optimizer import Gradient_Descent
 # import time
 
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
 
-h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
-# h_v = [12 * 2**(-8)]
+# the real h is 12 * 2**(-8), the other ones are for the convergence analysis
+# h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
+h_v = [12 * 2**(-8)]
 beta = 1000
 tau_az = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
 tau_L2 = [0.1, 0.5, 1., 1.5, 2., 2.5, 3., 5., 10., 100., 1000.]
 
-MaxIter = 50
+MaxIter = 100
 toll = 1e-5
 
 filename_results = './results/test_2_pointwise_itself.csv'
@@ -39,36 +40,45 @@ for h in h_v:
     mu_TF = fd.Constant(fd.sqrt(beta / fd.pi))
 
     u0 = fd.conditional(v < mu_TF, fd.sqrt((mu_TF - v)/beta), 0.0)
+
+    E_ref = 0.5 * fd.assemble(0.5 * fd.dot(fd.grad(u_ex), fd.grad(u_ex)) * fd.dx + v * u_ex **2 * fd.dx + beta * 0.5 * abs(u_ex)**4 * fd.dx)
     # L2 gradient
-    problem_L2 = gradients.gradient_L2(beta, v, W, bcs, h)
+    optim_GD = Gradient_Descent(beta,v,W, bcs, h)
     for tau in tau_L2:
-        problem_L2.assemble_problem(u0, tau, u_ex)
+        optim_GD.compile(u0, tau, E_ref, grad_type = 'L2')
 
-        res = problem_L2.minimize(MaxIter, toll)
+        res = optim_GD.minimize(MaxIter, toll)
 
-        problem_L2.save_data(filename_results, 'L2',res)
+        optim_GD.save_data(filename_results, res)
 
-        # problem_L2.plot_history('L2')
+        # problem_L2.plot_history()
 
         if res["converged"]:
+            print()
             print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            print()
         else:
+            print()
             print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+            print()
         
     # a_z gradient
-    problem_az = gradients.gradient_az(beta, v, W, bcs, h)
     for tau in tau_az:
-        problem_az.assemble_problem(u0, tau, u_ex)
+        optim_GD.compile(u0, tau, E_ref, grad_type = 'az')
 
-        res = problem_az.minimize(MaxIter, toll)
+        res = optim_GD.minimize(MaxIter, toll)
 
-        problem_az.save_data(filename_results, 'az',res)
+        optim_GD.save_data(filename_results, res)
 
         # problem_az.plot_history('az')
 
         if res["converged"]:
+            print()
             print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            print()
         else:
+            print()
             print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+            print()
 
     plt.show()
