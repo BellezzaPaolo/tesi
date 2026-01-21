@@ -88,6 +88,9 @@ class gradient_L2_fully_expli(gradient):
         '''
         Implements the step of L2 gradient
         '''
+        if fd.norm(u_old, 'L2')-1 >1e-14:
+            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
+        
         # intE = ∫ 0.5 ∇u∇u + Vu^2 + β |u|^2 uudx
         intE = fd.assemble(0.5 * fd.dot(fd.grad(u_old), fd.grad(u_old)) * fd.dx + self.v * u_old * u_old * fd.dx + self.beta * abs(u_old)**2 * u_old * u_old * fd.dx)
         # intR = ∫ u^2 dx
@@ -102,8 +105,6 @@ class gradient_L2_fully_expli(gradient):
         # M u^n+1 = Mu^n - τ ( 0.5 * A + v M + β N(u^2) )u^n + τ intE/intR * Mu^n
         self.solver_Mass.solve(self.uh, rhs)
 
-        # normalize
-        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
         
 
 
@@ -128,6 +129,9 @@ class gradient_L2(gradient):
         '''
         Implements the step of L2 gradient
         '''
+        if fd.norm(u_old, 'L2')-1 >1e-14:
+            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
+        
         rhs = u_old * self.w * fd.dx 
         
         problem = fd.LinearVariationalProblem(self.a + self.tau * self.beta * (u_old **2 * self.u) * self.w * fd.dx,
@@ -137,8 +141,40 @@ class gradient_L2(gradient):
         solver =  fd.LinearVariationalSolver(problem)#, solver_parameters=param)
         solver.solve()
 
-        # normalize
-        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
+
+class gradient_L2_P(gradient):
+    def __init__(self, W, bcs, h, beta, v):
+        super().__init__(W, bcs, h, beta, v, 'L2_P')
+
+    def assemble_problem(self, tau):
+        '''
+        Allocate and assembles forms and minimization quantities
+
+        :param tau (float): time step
+        '''
+
+        self.tau = fd.Constant(tau)
+
+        self.a = self.u * self.w * fd.dx \
+            + self.tau * 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
+            + self.tau * self.v * self.u * self.w * fd.dx
+        
+    def step(self, u_old):
+        '''
+        Implements the step of L2 gradient
+        '''
+        if fd.norm(u_old, 'L2')-1 >1e-14:
+            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
+        
+        shift = (fd.assemble((0.5 * fd.dot(fd.grad(u_old), fd.grad(u_old)) + self.v * u_old * u_old + self.beta * abs(u_old)**2 * u_old * u_old)* fd.dx))/fd.assemble(u_old * u_old * fd.dx)
+        rhs = (1 + self.tau * shift) * u_old * self.w * fd.dx
+        
+        problem = fd.LinearVariationalProblem(self.a + self.tau * self.beta * (u_old **2 * self.u) * self.w * fd.dx,
+                                                rhs,
+                                                self.uh,
+                                                self.bcs)
+        solver =  fd.LinearVariationalSolver(problem)#, solver_parameters=param)
+        solver.solve()
 
 
 class gradient_H1(gradient):
@@ -168,6 +204,9 @@ class gradient_H1(gradient):
         '''
         Implements a step of the gradient H1
         '''
+        if fd.norm(u_old, 'L2')-1 >1e-14:
+            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
+        
         # compute the Riesz projection
         rhs_R = fd.assemble(u_old * self.w * fd.dx)
 
@@ -187,8 +226,6 @@ class gradient_H1(gradient):
 
         self.uh.assign(u_old - self.tau * self.gradE + self.tau * intE/intR * self.R_u)
 
-        # normalize
-        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
 
             
 class gradient_a0(gradient):
@@ -221,6 +258,9 @@ class gradient_a0(gradient):
         '''
         Impelements one step of the a_0 gradient 
         '''
+        if fd.norm(u_old, 'L2')-1 >1e-14:
+            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
+        
         # compute reisz prjections
         rhs_Ru = fd.assemble(u_old * self.w * fd.dx)
         self.solver_Stiffness.solve(self.R_u, rhs_Ru)
@@ -235,8 +275,6 @@ class gradient_a0(gradient):
 
         self.uh.assign((1 - self.tau) * u_old  - self.tau * self.R_u2u + self.tau * intE/intR * self.R_u)
 
-        # normalize
-        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
 
 class gradient_az(gradient):
     def __init__(self, W, bcs, h, beta, v):
@@ -263,6 +301,9 @@ class gradient_az(gradient):
         '''
         Implements one step of the a_z gradient
         '''
+        if fd.norm(u_old, 'L2')-1 >1e-14:
+            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
+        
         # compute Riesz
         rhs_R = fd.inner(u_old , self.w) * fd.dx
 
@@ -281,6 +322,3 @@ class gradient_az(gradient):
         intR = fd.assemble(self.R_u * u_old * fd.dx)
 
         self.uh.assign((1 - self.tau) * u_old + self.tau * 1/intR * self.R_u)
-
-        # normalize
-        self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
