@@ -4,12 +4,14 @@ import csv
 import time
 from optimizer import Gradient_Descent, ParaflowS
 
-is_save_CSV = False
-is_save_log = False
-is_save_plot = False
+is_save_CSV = True
+is_save_log = True
+is_save_plot = True
 
-filename_results_GD = './incontro1/GD.csv'
-filename_results_PF = './incontro1/PF.csv'
+folder = './incontro_dt_equal/'
+
+filename_results_GD = folder + 'GD.csv'
+filename_results_PF = folder + 'PF.csv'
 
 nx = 256
 beta_v = [1000]#,100,1000]
@@ -17,8 +19,8 @@ tau_v = [1, 0.5, 0.25, 0.1] #[1, 0.5]
 MaxIter = 500
 toll = 1e-5
 E_ref = {10: 0.79620688, 100: 1.97298868, 1000: 5.99303235}
-methods_coarse = ['L2_P', 'az']
-methods_fine = ['L2_P', 'az']
+methods_coarse = ['L2_P', 'L2', 'az']
+methods_fine = ['L2_P', 'L2', 'az']
 Nf_v = [2, 5, 10]
 Ng_v = [5, 10, 20, 100]
 
@@ -42,6 +44,7 @@ if is_save_CSV:
 orig_stdout = sys.stdout
 t_start = time.time()
 
+only_for_print_time = 0
 
 for beta in beta_v:
     optim = ParaflowS(beta,v,W, bcs, 12 * 2**(-8))
@@ -53,11 +56,11 @@ for beta in beta_v:
 
             filename = 'GD'+ name_fine + '_tau' + str(tau)
             if is_save_log:
-                f = open('./incontro1/' + filename + '.log', 'w')
+                f = open(folder + filename + '.log', 'w')
                 sys.stdout = f
             res = optim_GD.minimize(MaxIter, toll)
             if is_save_plot:
-                optim_GD.plot_history(filesave = './incontro1/'+filename + '.png')
+                optim_GD.plot_history(filesave = folder +filename + '.png')
 
             if is_save_CSV:
                 optim_GD.save_data(filename_results_GD, res)
@@ -65,24 +68,26 @@ for beta in beta_v:
             if is_save_log:
                 f.close()
 
-            for name_coarse in methods_coarse:
-                for Nf in Nf_v:
-                    for Ng in Ng_v:
+            #for name_coarse in methods_coarse:
+            name_coarse = name_fine
+            for Nf in Nf_v:
+                for Ng in Ng_v:
 
-                        optim.compile(u0, tau, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
+                    optim.compile(u0, tau, tau, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
 
-                        filename = 'PF'+ name_fine + '_' + name_coarse + '_tau' + str(tau) + '_Nf'+ str(Nf)+ '_Ng' + str(Ng)
-                        if is_save_log:
-                            f = open('./incontro1/'+filename + '.log', 'w')
-                            sys.stdout = f
-                        res = optim.minimize(MaxIter, toll)
-                        if is_save_plot:
-                            optim.plot_history(filesave = './incontro1/'+ filename + '.png')
-                        if is_save_CSV:
-                            optim.save_data(filename_results_PF, res)
-                        if is_save_log:
-                            f.close()
+                    filename = 'PF'+ name_fine + '_' + name_coarse + '_tau' + str(tau) + '_Nf'+ str(Nf)+ '_Ng' + str(Ng)
+                    if is_save_log:
+                        f = open(folder + filename + '.log', 'w')
+                        sys.stdout = f
+                    res = optim.minimize(MaxIter, toll)
+                    if is_save_plot:
+                        optim.plot_history(filesave = folder + filename + '.png')
+                    if is_save_CSV:
+                        optim.save_data(filename_results_PF, res)
+                    if is_save_log:
+                        f.close()
                 
             sys.stdout = orig_stdout
 
-            print(f'Done {name_fine} minimization for tau = {tau} and beta = {beta} in {time.time() - t_start} seconds.')
+            only_for_print_time += 1
+            print(f'Done {name_fine} minimization for tau = {tau} and beta = {beta} in {time.time() - t_start} seconds. Missing time: {(time.time() - t_start)*(len(tau_v)*len(beta_v)*len(methods_fine) - only_for_print_time)/ only_for_print_time}')

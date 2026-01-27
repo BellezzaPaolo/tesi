@@ -1,5 +1,5 @@
 import firedrake as fd
-# import numpy as np
+import numpy as np
 import csv
 import matplotlib.pyplot as plt
 from optimizer import Gradient_Descent
@@ -11,20 +11,21 @@ xmax, ymax = 6., 6.
 # the used h are below, this is only for the convergence test
 # h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
 h_v = [12 * 2**(-8)]#[12 * 2**(-6),12 * 2**(-8)]
-beta_v = [10, 100, 1000]
+beta_v = [1000] #[10, 100, 1000]
 # tau_v = [0.01, 0.005, 0.001]
-tau_v = [1, 0.5]
-methods = ['L2', 'H1', 'a0', 'az']
+tau_v = list(np.sort(np.array(list(np.linspace(0.3,1.1,20)) + list(np.logspace(-4, 0, 10, base = 2)) + [1, 0.5] )))#[1, 0.5]
+methods = ['az']#['L2', 'H1', 'a0', 'az']
+N_iter = []
 
-MaxIter = 100
+MaxIter = 150
 toll = 1e-5
 
-filename_results = './results/test_1_prove.csv'
+# filename_results = './results/test_1_prove.csv'
 
 
-with open(filename_results, "a", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
+# with open(filename_results, "a", newline="") as f:
+#     writer = csv.writer(f)
+#     writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
 
 E_ref = {10: 0.79620688, 100: 1.97298868, 1000: 5.99303235} # value for h = 12 * 2 **(-8)
 #        10: 0.79620688, 100: 1.97298868, 1000: 5.99303235
@@ -50,7 +51,9 @@ for h in h_v:
 
                 res = optim_GD.minimize(MaxIter, toll,verbose = False)
 
-                optim_GD.save_data(filename_results, res)
+                N_iter.append(res["iterate"])
+
+                # optim_GD.save_data(filename_results, res)
 
                 # optim_GD.plot_history()
 
@@ -62,4 +65,11 @@ for h in h_v:
                     print()
                     print(f'{name} minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
                     print()
+
+plt.figure()
+plt.plot(tau_v, N_iter, marker='o',label='az')
+plt.xscale('log')
+plt.xlabel('Step size (tau)')
+plt.ylabel('Number of iterations to converge')
+plt.legend()
 plt.show()

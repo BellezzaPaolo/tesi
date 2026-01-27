@@ -88,7 +88,7 @@ class gradient_L2_fully_expli(gradient):
         '''
         Implements the step of L2 gradient
         '''
-        if fd.norm(u_old, 'L2')-1 >1e-14:
+        if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
         # intE = ∫ 0.5 ∇u∇u + Vu^2 + β |u|^2 uudx
@@ -129,7 +129,7 @@ class gradient_L2(gradient):
         '''
         Implements the step of L2 gradient
         '''
-        if fd.norm(u_old, 'L2')-1 >1e-14:
+        if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
         rhs = u_old * self.w * fd.dx 
@@ -163,7 +163,7 @@ class gradient_L2_P(gradient):
         '''
         Implements the step of L2 gradient
         '''
-        if fd.norm(u_old, 'L2')-1 >1e-14:
+        if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
         shift = (fd.assemble((0.5 * fd.dot(fd.grad(u_old), fd.grad(u_old)) + self.v * u_old * u_old + self.beta * abs(u_old)**2 * u_old * u_old)* fd.dx))/fd.assemble(u_old * u_old * fd.dx)
@@ -204,7 +204,7 @@ class gradient_H1(gradient):
         '''
         Implements a step of the gradient H1
         '''
-        if fd.norm(u_old, 'L2')-1 >1e-14:
+        if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
         # compute the Riesz projection
@@ -258,7 +258,7 @@ class gradient_a0(gradient):
         '''
         Impelements one step of the a_0 gradient 
         '''
-        if fd.norm(u_old, 'L2')-1 >1e-14:
+        if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
         # compute reisz prjections
@@ -301,7 +301,7 @@ class gradient_az(gradient):
         '''
         Implements one step of the a_z gradient
         '''
-        if fd.norm(u_old, 'L2')-1 >1e-14:
+        if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
         # compute Riesz

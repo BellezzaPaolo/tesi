@@ -3,8 +3,8 @@ import pandas as pd
 # -----------------------
 # Load CSV files
 # -----------------------
-df_PF = pd.read_csv("./incontro/PF.csv")
-df_GD = pd.read_csv("./incontro/GD.csv")
+df_PF = pd.read_csv("./incontro2/PF.csv")
+df_GD = pd.read_csv("./incontro2/GD.csv")
 
 # Extract unique values
 N_fine_vals   = df_PF["N_fine"].unique()

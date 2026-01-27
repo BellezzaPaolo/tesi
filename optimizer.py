@@ -280,28 +280,29 @@ class ParaflowS(Optimizer):
         '''
         super().__init__('ParaflowS',beta, v, W, bcs, h)
 
-    def compile(self, u0, tau, E_ref, grad_type_coarse, grad_type_fine, Nf, Ng = 100):
+    def compile(self, u0, tau_f, tau_g, E_ref, grad_type_coarse, grad_type_fine, Nf, Ng = 100):
         '''
         Docstring for compile
         
         :param self: Description
         :param u0: Description
-        :param tau: Description
+        :param tau_f: Description
+        :param tau_g: Description
         :param E_ref: Description
         :param grad_type_coarse: Description
         :param grad_type_fine: Description
         :param Nf: Description
-        :param Nc: Description
+        :param Ng: Description
         '''
 
         super().compile(u0, E_ref)
 
         self.coarse_solver = self.get_solver(grad_type_coarse)
-        self.coarse_solver.assemble_problem(tau * Nf)
+        self.coarse_solver.assemble_problem(tau_g)
         self.Ng = Ng
 
         self.fine_solver = self.get_solver(grad_type_fine)
-        self.fine_solver.assemble_problem(tau)
+        self.fine_solver.assemble_problem(tau_f)
         self.Nf = Nf
 
         self.correction_uh = fd.Function(self.W)
@@ -335,19 +336,26 @@ class ParaflowS(Optimizer):
             N_iter_coarse +=1
 
             self.fine_solver.uh.assign(self.u_old)
+            # alpha = 0.0
             for _ in range(self.Nf):
                 # normalize
                 self.fine_solver.uh.assign(self.fine_solver.uh / fd.norm(self.fine_solver.uh,'L2'))
 
                 self.fine_solver.step(self.fine_solver.uh)
-                print(f'fine energy: {self.energy(self.fine_solver.uh/ fd.norm(self.fine_solver.uh,'L2'))} fine error: {abs(self.energy(self.fine_solver.uh/ fd.norm(self.fine_solver.uh,'L2'))- self.E_ref) / self.E_ref}')
+                energy_new = self.energy(self.fine_solver.uh/ fd.norm(self.fine_solver.uh,'L2'))
+                print(f'fine energy: {energy_new} fine error: {abs(energy_new - self.E_ref) / self.E_ref}')
 
-                self.history_fine.append(self.energy(self.fine_solver.uh/ fd.norm(self.fine_solver.uh,'L2')))
+                self.history_fine.append(energy_new)
                 
+                # alpha += energy_new/energy_old
+
+                energy_old = energy_new
                 N_iter_fine += 1 
 
             self.correction_uh.assign(self.fine_solver.uh - self.coarse_solver.uh) # not necessary, could be done also self.fine_solver.uh.assign(self.fine_solver.uh - self.coarse_solver.uh)
-
+            # alpha /= self.Nf
+            # alpha = min(1.0, alpha + 0.01)
+            # print(f'Alpha value: {alpha}')
             for j in range(self.Ng):
                 self.coarse_solver.step(self.u_old)
                 N_iter_coarse +=1
@@ -367,7 +375,8 @@ class ParaflowS(Optimizer):
                     print(f'    coarse iter {j}, Energy: {self.E:.10f} and error {error:.6e}, energy correction: {self.energy(self.correction_uh / fd.norm(self.correction_uh,'L2'))}, old energy: {energy_old}')
 
 
-                if self.E > energy_old:
+                if self.E > energy_old and j >= 1: 
+                # if self.E > alpha * energy_old and j >= 1:
                     print('     Exiting energy grow up')
                     self.uh.assign(self.u_old)
                     break
