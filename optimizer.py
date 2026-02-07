@@ -357,8 +357,6 @@ class ParaflowS(Optimizer):
             # alpha = min(1.0, alpha + 0.01)
             # print(f'Alpha value: {alpha}')
             for j in range(self.Ng):
-                self.coarse_solver.step(self.u_old)
-                N_iter_coarse +=1
 
                 self.uh.assign(self.coarse_solver.uh + self.correction_uh)
 
@@ -386,6 +384,9 @@ class ParaflowS(Optimizer):
 
                 energy_old = self.E
                 self.u_old.assign(self.uh)
+                
+                self.coarse_solver.step(self.u_old)
+                N_iter_coarse +=1
 
             self.energy()
 

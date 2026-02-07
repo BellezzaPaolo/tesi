@@ -8,21 +8,21 @@ is_save_CSV = True
 is_save_log = True
 is_save_plot = True
 
-folder = './incontro_dt_equal/'
+folder = './incontro1_dt_2/'
 
 filename_results_GD = folder + 'GD.csv'
 filename_results_PF = folder + 'PF.csv'
 
 nx = 256
 beta_v = [1000]#,100,1000]
-tau_v = [1, 0.5, 0.25, 0.1] #[1, 0.5]
-MaxIter = 500
+tau_v = [1, 0.5, 0.25, 0.1, 0.05, 0.025] #[1, 0.5]
+MaxIter = 1000
 toll = 1e-5
 E_ref = {10: 0.79620688, 100: 1.97298868, 1000: 5.99303235}
-methods_coarse = ['L2_P', 'L2', 'az']
-methods_fine = ['L2_P', 'L2', 'az']
+methods_coarse = ['L2_P', 'az']
+methods_fine = ['L2_P', 'az']
 Nf_v = [2, 5, 10]
-Ng_v = [5, 10, 20, 100]
+Ng_v = [2, 5, 10, 20, 100]
 
 mesh = fd.RectangleMesh(nx, nx, 6, 6, -6, -6, diagonal = 'left')
 W = fd.FunctionSpace(mesh,'CG',1)
@@ -73,7 +73,7 @@ for beta in beta_v:
             for Nf in Nf_v:
                 for Ng in Ng_v:
 
-                    optim.compile(u0, tau, tau, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
+                    optim.compile(u0, tau, tau * Nf / 2, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
 
                     filename = 'PF'+ name_fine + '_' + name_coarse + '_tau' + str(tau) + '_Nf'+ str(Nf)+ '_Ng' + str(Ng)
                     if is_save_log:

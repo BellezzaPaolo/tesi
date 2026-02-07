@@ -3,8 +3,8 @@ import pandas as pd
 # -----------------------
 # Load CSV files
 # -----------------------
-df_PF = pd.read_csv("./incontro2/PF.csv")
-df_GD = pd.read_csv("./incontro2/GD.csv")
+df_PF = pd.read_csv("./incontro21/PF.csv")
+df_GD = pd.read_csv("./incontro21/GD.csv")
 
 # Extract unique values
 N_fine_vals   = df_PF["N_fine"].unique()
@@ -73,8 +73,10 @@ with open(filename_table, "w") as f:
                                 f"{int(row['iterate_fine'])} | "
                                 f"{int(row['iterate_coarse'])}"
                             )
-                            if int(row['iterate_fine']) + int(row['iterate_coarse']) <= int(df_GD[(df_GD['tau'] == tau) & (df_GD['optimizer_name'] == fs)]['iterate'].values[0]):
+                            if int(row['iterate_fine']) + int(row['iterate_coarse']) <= int(0.9 * df_GD[(df_GD['tau'] == tau) & (df_GD['optimizer_name'] == fs)]['iterate'].values[0]):
                                 f.write(rf"& \cellcolor{{gray}}${cell}$")
+                            elif int(row['iterate_fine']) + int(row['iterate_coarse']) <= int(df_GD[(df_GD['tau'] == tau) & (df_GD['optimizer_name'] == fs)]['iterate'].values[0]):
+                                f.write(rf"& \cellcolor{{lightgray}}${cell}$")
                             else:
                                 f.write(rf"& ${cell}$")
 

@@ -55,6 +55,26 @@ $$
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
+    #### Remark:
+    The fact that the projection can be "hidden" in the normalization is due to the fact that the Riesz rappresentive of $z^n$ in $L^2$ is $z^n$ itself:
+    $$
+    \tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(\tilde z^{n+1}) + \tau \frac{\lambda(z^n)}{\|z^n\|}z^n
+    $$
+    That algebrically becomes:
+    $$
+    (M + \tau H ) \tilde z^{n+1} = (1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) z^n
+    $$
+    $$
+    \tilde z^{n+1} = (1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n
+    $$
+    The normalization will become:
+    $$
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{\|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n\|} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|})|\|(M + \tau H ) ^{-1} z^n\|}
+    $$
+    so the $L^2$ gradient semimplicit is equivalent with or iwthout the projection up to a sign. Moreover note that $\|z^n\| = 1$ because of the constrain, and that $\lambda(z^n) $ is positive by definition (sum of positive terms), so: 
+    $$
+    z^{n+1} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|})|\|(M + \tau H ) ^{-1} z^n\|} = \frac{(M + \tau H )^{-1}z^n}{\|(M + \tau H )^{-1}z^n\|}
+    $$
 - ### $X = L^2(D)$ and explicit:
     In this case $R_{L^2}(z) = z$, $P_{z,L^2}(v) = v - \frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$:
     $$
@@ -153,4 +173,4 @@ TODO:
 - [ x ]TANTE PRIME ITERATE CON VARI h
 - [ x ]VERO GRADINETE L2 (BAO 12) CON MASS LAMPING FORSE
 
-- [  ] controlalre quadrature per la non-linearità 
+- [ x ] controlalre quadrature per la non-linearità 

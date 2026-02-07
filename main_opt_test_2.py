@@ -8,7 +8,7 @@ is_save_CSV = True
 is_save_log = True
 is_save_plot = True
 
-folder = './incontro2/'
+folder = './incontro21/'
 
 filename_results_GD = folder + 'GD.csv'
 filename_results_PF = folder + 'PF.csv'
@@ -17,13 +17,13 @@ nx = 256
 beta = 1000
 # tau_az = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
 # tau_L2 = [0.1, 0.5, 1., 1.5, 2., 2.5, 3., 5., 10., 100., 1000.]
-tau_v = [0.1] #[1, 0.5]
-MaxIter = 500
+tau_v = [1.5, 1.0, 0.5, 0.25, 0.1, 0.05, 0.025] #[1, 0.5]
+MaxIter = 1000
 toll = 1e-5
-methods_coarse = ['L2_P', 'L2', 'az']
-methods_fine = ['L2_P', 'L2', 'az']
+methods_coarse = ['L2_P', 'az']
+methods_fine = ['L2_P', 'az']
 Nf_v = [2, 5, 10]
-Ng_v = [5, 10, 20, 100]
+Ng_v = [2, 5, 10, 20, 100]
 
 mesh = fd.RectangleMesh(nx, nx, 6, 6, -6, -6, diagonal = 'left')
 W = fd.FunctionSpace(mesh, 'CG',1)
