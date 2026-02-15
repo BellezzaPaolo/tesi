@@ -1,5 +1,5 @@
 import firedrake as fd
-# import numpy as np
+import numpy as np
 import csv
 import matplotlib.pyplot as plt
 import utils
@@ -13,23 +13,26 @@ xmax, ymax = 6., 6.
 # h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
 h_v = [12 * 2**(-8)]
 beta = 1000
-tau_az = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
-tau_L2 = [0.1, 0.5, 1., 1.5, 2., 2.5, 3., 5., 10., 100., 1000.]
+tau_az = list(np.linspace(0.5, 1.7,20))#[0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
+tau_L2 = np.sort(list(np.logspace(-2, 3,10, base = 20)) + list(np.linspace(0.1,100, 20))) #[0.1, 0.5, 1., 1.5, 2., 2.5, 3., 5., 10., 100., 1000.]
+Iter_L2 = []
+
+Iter_az = []
 
 MaxIter = 100
 toll = 1e-5
 
-filename_results = './results/test_2_pointwise_itself.csv'
+# filename_results = './results/test_2_pointwise_itself.csv'
 
 
-with open(filename_results, "a", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
+# with open(filename_results, "a", newline="") as f:
+#     writer = csv.writer(f)
+#     writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
 
 for h in h_v:
     nx = int((xmax-xmin)/h)
-    filename_ref = './Ground_Truth_2/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
-    mesh, u_ex = utils.load_ground_truth(filename_ref)
+    mesh = fd.RectangleMesh(nx, nx, xmax, ymax, originX = xmin, originY = ymin, diagonal = 'left')
+
     W = fd.FunctionSpace(mesh, 'CG',1)
 
     # Data and boundary conditions
@@ -41,15 +44,16 @@ for h in h_v:
 
     u0 = fd.conditional(v < mu_TF, fd.sqrt((mu_TF - v)/beta), 0.0)
 
-    E_ref = 0.5 * fd.assemble(0.5 * fd.dot(fd.grad(u_ex), fd.grad(u_ex)) * fd.dx + v * u_ex **2 * fd.dx + beta * 0.5 * abs(u_ex)**4 * fd.dx)
+    E_ref = 15.204825
     # L2 gradient
     optim_GD = Gradient_Descent(beta,v,W, bcs, h)
     for tau in tau_L2:
         optim_GD.compile(u0, tau, E_ref, grad_type = 'L2')
 
-        res = optim_GD.minimize(MaxIter, toll)
+        res = optim_GD.minimize(MaxIter, toll, False)
+        Iter_L2.append(res["iterate"])
 
-        optim_GD.save_data(filename_results, res)
+        # optim_GD.save_data(filename_results, res)
 
         # problem_L2.plot_history()
 
@@ -66,9 +70,10 @@ for h in h_v:
     for tau in tau_az:
         optim_GD.compile(u0, tau, E_ref, grad_type = 'az')
 
-        res = optim_GD.minimize(MaxIter, toll)
+        res = optim_GD.minimize(MaxIter, toll, False)
+        Iter_az.append(res["iterate"])
 
-        optim_GD.save_data(filename_results, res)
+        # optim_GD.save_data(filename_results, res)
 
         # problem_az.plot_history('az')
 
@@ -81,4 +86,16 @@ for h in h_v:
             print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
             print()
 
+    plt.figure()
+    plt.loglog(tau_L2, Iter_L2, label = 'L2', marker = 'o')
+    plt.legend()
+    plt.xlabel('Step size (tau)')
+    plt.ylabel('Number of iterations to converge')
+    plt.show()
+
+    plt.figure()
+    plt.loglog(tau_az, Iter_az, label = 'a_z', marker = 'x')
+    plt.legend()
+    plt.xlabel('Step size (tau)')
+    plt.ylabel('Number of iterations to converge')
     plt.show()

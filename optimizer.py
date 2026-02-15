@@ -330,20 +330,23 @@ class ParaflowS(Optimizer):
         for i in range(MaxIter):
             self.history_fine = []
             energy_old = self.energy(self.u_old)
-            print(f'Entry error: {abs(energy_old - self.E_ref) / self.E_ref} ')
+            
+            if verbose:
+                print(f'Entry error: {abs(energy_old - self.E_ref) / self.E_ref} ')
 
             self.coarse_solver.step(self.u_old)
             N_iter_coarse +=1
 
             self.fine_solver.uh.assign(self.u_old)
-            # alpha = 0.0
+            alpha = 0.0
             for _ in range(self.Nf):
                 # normalize
                 self.fine_solver.uh.assign(self.fine_solver.uh / fd.norm(self.fine_solver.uh,'L2'))
 
                 self.fine_solver.step(self.fine_solver.uh)
                 energy_new = self.energy(self.fine_solver.uh/ fd.norm(self.fine_solver.uh,'L2'))
-                print(f'fine energy: {energy_new} fine error: {abs(energy_new - self.E_ref) / self.E_ref}')
+                if verbose:
+                    print(f'fine energy: {energy_new} fine error: {abs(energy_new - self.E_ref) / self.E_ref}')
 
                 self.history_fine.append(energy_new)
                 
@@ -353,8 +356,8 @@ class ParaflowS(Optimizer):
                 N_iter_fine += 1 
 
             self.correction_uh.assign(self.fine_solver.uh - self.coarse_solver.uh) # not necessary, could be done also self.fine_solver.uh.assign(self.fine_solver.uh - self.coarse_solver.uh)
-            # alpha /= self.Nf
-            # alpha = min(1.0, alpha + 0.01)
+            alpha /= self.Nf
+            alpha = min(1.0, alpha + 0.01)
             # print(f'Alpha value: {alpha}')
             for j in range(self.Ng):
 
@@ -375,11 +378,13 @@ class ParaflowS(Optimizer):
 
                 if self.E > energy_old and j >= 1: 
                 # if self.E > alpha * energy_old and j >= 1:
-                    print('     Exiting energy grow up')
+                    if verbose:
+                        print('     Exiting energy grow up')
                     self.uh.assign(self.u_old)
                     break
                 if error < toll:
-                    print('     Exiting because the error is small enough')
+                    if verbose:
+                        print('     Exiting because the error is small enough')
                     break
 
                 energy_old = self.E

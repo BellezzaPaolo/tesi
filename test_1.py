@@ -17,7 +17,7 @@ tau_v = list(np.sort(np.array(list(np.linspace(0.3,1.1,20)) + list(np.logspace(-
 methods = ['az']#['L2', 'H1', 'a0', 'az']
 N_iter = []
 
-MaxIter = 150
+MaxIter = 60
 toll = 1e-5
 
 # filename_results = './results/test_1_prove.csv'
@@ -45,7 +45,7 @@ for h in h_v:
 
         optim_GD = Gradient_Descent(beta,v,W, bcs, h)
 
-        for tau in tau_v:
+        for tau in tau_v[21:]:
             for name in methods:
                 optim_GD.compile(u0, tau, E_ref[beta], grad_type = name)
 
