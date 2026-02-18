@@ -40,7 +40,7 @@ V_random = fd.Function(Wdg)
 V_random.dat.data[:] = flat
 
 h = 12 * 2**(-8)
-beta = 100
+beta = 10
 
 nx = int((xmax - xmin) / h)
 ny = int((ymax - ymin) / h)

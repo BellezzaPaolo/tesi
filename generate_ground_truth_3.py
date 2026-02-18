@@ -3,6 +3,7 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 import utils
+from test.pot_3 import RandomDisorderPotential
 # import time
 
 # reproducibility
@@ -36,30 +37,28 @@ meshV = fd.RectangleMesh(nxV, nyV, xmax, ymax, originX=xmin, originY=ymin, quadr
 # Function space for a cellwise-constant potential
 Vdg = fd.FunctionSpace(meshV, "DG", 0)   # piecewise-constant per cell
 
-# Values to choose between
-val_low = 1.0
-val_high = (epsilon**-2)   # epsilon^{-2}
+# Create random disorder potential using the RandomDisorderPotential class
+# Using seed=21 for consistency with the original rng seed
+potential_obj = RandomDisorderPotential(number_of_cells=400, domain_size=12.0, seed=21)
 
-# sample Nx * Ny random choices in row-major order
-choices = rng.choice([val_low, val_high], size=(nyV, nxV), p=[0.5, 0.5])
-
-# Firedrake cell ordering for a RectangleMesh is compatible with flattening rows,
-# but to be safe we flatten in the same natural order (row-major)
-flat = choices.ravel(order="C")  # length = number of cells
-
-# create the DG0 function and assign cell values
+# Create the DG0 function for the potential
 V_random = fd.Function(Vdg)
-# The DG0 Function stores one degree of freedom per cell. We can write into the
-# underlying vector directly. For many Firedrake versions:
-V_random.dat.data[:] = flat
+
+# Get cell coordinates from meshV and evaluate the potential
+coord_fn_V = fd.Function(fd.VectorFunctionSpace(meshV, 'DG', 0))
+coord_fn_V.interpolate(fd.SpatialCoordinate(meshV))
+coords_V = coord_fn_V.dat.data_ro
+
+# Evaluate potential at cell coordinates and assign to V_random
+V_random.dat.data[:] = potential_obj.evaluate(coords_V[:, 0], coords_V[:, 1])
 
 h = 12 * 2**(-8)
-beta = 100
+beta = 10
 
 nx = int((xmax - xmin) / h)
 ny = int((ymax - ymin) / h)
 
-mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX=xmin, originY=ymin, diagonal='right')
+mesh = fd.RectangleMesh(nx, ny, xmax, ymax, originX=xmin, originY=ymin, diagonal='left')
 x = fd.SpatialCoordinate(mesh)
 
 W = fd.FunctionSpace(mesh, 'CG', 1)
