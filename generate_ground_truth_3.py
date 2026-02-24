@@ -3,7 +3,7 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 import utils
-from test.pot_3 import RandomDisorderPotential
+from pot_3 import RandomDisorderPotential
 # import time
 
 # reproducibility
@@ -97,15 +97,26 @@ print("mesh   cellsize PDE approx:", (xmax-xmin)/nx, (ymax-ymin)/ny)
 print("epsilon:", epsilon, "h (PDE):", h)
 
 
-fig, ax = plt.subplots(2,1, figsize=(5,10))
-col = fd.tripcolor(v, axes=ax[0], cmap='coolwarm')
+# fig, ax = plt.subplots(2,1, figsize=(5,10))
+# col = fd.tripcolor(v, axes=ax[0], cmap='coolwarm')
+# plt.colorbar(col)
+# ax[0].set_title('Random Potential v(x)')
+# ax[0].axis('equal')
+# col = fd.tripcolor(V_random, axes = ax[1], cmap='coolwarm')
+# plt.colorbar(col)
+# ax[1].set_title('random potential')
+# ax[1].axis('equal')
+# plt.show()
+
+# Plot the potential
+v_func = fd.Function(W)
+v_func.interpolate(v)
+fig, ax = plt.subplots()
+col = fd.tripcolor(v_func, axes=ax, cmap='coolwarm')
 plt.colorbar(col)
-ax[0].set_title('Random Potential v(x)')
-ax[0].axis('equal')
-col = fd.tripcolor(V_random, axes = ax[1], cmap='coolwarm')
-plt.colorbar(col)
-ax[1].set_title('random potential')
-ax[1].axis('equal')
+ax.axis('equal')
+ax.axis('off')
+# plt.title(r'Potential with Anderson Localization')
 plt.show()
 
 bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]
@@ -165,12 +176,21 @@ print()
 print(f'Final energy estimate: {e_gs} and associated lambda: {lamb_gs} with h: {h} and beta: {beta}')
 
 
+# fig, ax = plt.subplots()
+# col = fd.tripcolor(uh, axes=ax, cmap = 'coolwarm')
+# print(max(uh.dat.data))
+# cbar = plt.colorbar(col, extendrect = 'both')
+# cbar.set_ticks(np.linspace(0.0, max(uh.dat.data), 11))
+
+
+# filename = './Ground_Truth_3/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
+# utils.save_uh(mesh, uh, filename)
+
+# Plot the final solution
 fig, ax = plt.subplots()
-col = fd.tripcolor(uh, axes=ax, cmap = 'coolwarm')
-print(max(uh.dat.data))
-cbar = plt.colorbar(col, extendrect = 'both')
-cbar.set_ticks(np.linspace(0.0, max(uh.dat.data), 11))
-
-
-filename = './Ground_Truth_3/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
-utils.save_uh(mesh, uh, filename)
+col = fd.tripcolor(uh, axes=ax, cmap='coolwarm')
+plt.colorbar(col)
+ax.axis('equal')
+ax.axis('off')
+# plt.title(f'Final Solution ($h = 12 \\times 2^{{{int(np.log2(h/12))}}}$, $\\beta = {beta}$)')
+plt.show()

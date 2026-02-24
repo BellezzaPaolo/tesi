@@ -66,7 +66,7 @@ def plotting():
     import matplotlib.pyplot as plt
     import pandas as pd
 
-    df = pd.read_csv('./results/Budget_definition_NG.csv',
+    df = pd.read_csv('../results/Budget_definition_NG.csv',
                      dtype={"name_opt": str, "h": float, "N": int, "time_assemble": float, "time_step": float, "time_step2": float, "time_step3": float})
 
     discard_first_N = 0 # discard the first point to have better scaling visibility
@@ -99,8 +99,8 @@ def plotting():
     ax[0].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
     for method, Ta_m in T_assemble:
         ax[0].plot(N, Ta_m/Ta_m[0], 'o-', label=method)
-    ax[0].plot(N,(N/N[0])**1.5, 'k*',label = 'O(N^1.5)')
-    ax[0].plot(N,(N/N[0])**0.5, 'k.',label = 'O(N^0.5)')
+    # ax[0].plot(N,(N/N[0])**1.5, 'k*',label = 'O(N^1.5)')
+    # ax[0].plot(N,(N/N[0])**0.5, 'k.',label = 'O(N^0.5)')
     ax[0].set_xlabel('N')
     ax[0].set_ylabel('Time assemble [s]')
     ax[0].legend()
@@ -113,7 +113,7 @@ def plotting():
     ax[1].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
     for method, Ts1_m in T_step:
         ax[1].plot(N, Ts1_m/Ts1_m[0], 'o-', label=method)
-    ax[1].plot(N,(N/N[0])**0.75, 'k*',label = 'O(N^0.75)')
+    # ax[1].plot(N,(N/N[0])**0.75, 'k*',label = 'O(N^0.75)')
     ax[1].set_xlabel('N')
     ax[1].set_ylabel('Time step [s]')
     ax[1].legend()

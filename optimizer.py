@@ -350,7 +350,7 @@ class ParaflowS(Optimizer):
 
                 self.history_fine.append(energy_new)
                 
-                # alpha += energy_new/energy_old
+                alpha += energy_new/energy_old
 
                 energy_old = energy_new
                 N_iter_fine += 1 
@@ -376,8 +376,8 @@ class ParaflowS(Optimizer):
                     print(f'    coarse iter {j}, Energy: {self.E:.10f} and error {error:.6e}, energy correction: {self.energy(self.correction_uh / fd.norm(self.correction_uh,'L2'))}, old energy: {energy_old}')
 
 
-                if self.E > energy_old and j >= 1: 
-                # if self.E > alpha * energy_old and j >= 1:
+                # if self.E > energy_old and j >= 1: 
+                if self.E > alpha * energy_old and j >= 1:
                     if verbose:
                         print('     Exiting energy grow up')
                     self.uh.assign(self.u_old)

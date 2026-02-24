@@ -1,6 +1,6 @@
 import firedrake as fd
-# import numpy as np
-# import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.pyplot as plt
 import utils
 
 def assemble_forms(u, w, v, tau, u_old, beta):
@@ -20,7 +20,7 @@ def assemble_forms(u, w, v, tau, u_old, beta):
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.
 
-h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9), 12 * 2**(-10)]
+h_v = [12* 2**(-8)]#[12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9), 12 * 2**(-10)]
 beta_v = [10, 100, 1000]
 
 for h in h_v:
@@ -57,12 +57,15 @@ for h in h_v:
     u_old = fd.Function(W)
     u_old.interpolate(u0)
 
-    # Plot it
-    # fig, ax = plt.subplots()
-    # col = fd.tripcolor(u_old, axes=ax)
-    # plt.colorbar(col)
-    # ax.axis('equal')
-    # plt.title('Initial guess')
+    # Plot the potential
+    v_func = fd.Function(W)
+    v_func.interpolate(v)
+    fig, ax = plt.subplots()
+    col = fd.tripcolor(v_func, axes=ax, cmap='coolwarm')
+    plt.colorbar(col)
+    ax.axis('equal')
+    plt.title(r'Potential: $V(x,y) = \frac{1}{2}(x^2 + y^2)$')
+    plt.show()
 
     # a, rhs = assemble_forms(u, w, v, tau[0], u_old, beta[0])
 
@@ -107,14 +110,13 @@ for h in h_v:
         print()
         print()
         print(f'Final energy estimate: {e_gs} and associated lambda: {lamb_gs} with h: {h} and beta: {beta}') #0.79620688 2.06380
-        filename = './Ground_Truth_1/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
-        utils.save_uh(mesh, uh, filename)
+        # filename = './Ground_Truth_1/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
+        # utils.save_uh(mesh, uh, filename)
 
-# Plot it
-# fig, ax = plt.subplots()
-# col = fd.tripcolor(uh, axes=ax)
-# plt.colorbar(col)
-# ax.axis('equal')
-# plt.title('Solution')
-
-# plt.show()
+        # Plot the final solution
+        fig, ax = plt.subplots()
+        col = fd.tripcolor(uh, axes=ax, cmap='coolwarm')
+        plt.colorbar(col)
+        ax.axis('equal')
+        plt.title(f'Final Solution ($h = 12 \\times 2^{{{int(np.log2(h/12))}}}$, $\\beta = {beta}$)')
+        plt.show()

@@ -21,42 +21,47 @@ nx = 256
 # beta_v = [1000]#,100,1000]
 MaxIter = 1000
 toll = 1e-5
-test = '2' # '1', '2' or '3'
+test = '1' # '1', '2' or '3'
 
-methods_coarse = ['L2_P', 'az']
-methods_fine = ['L2_P']#['L2_P', 'az']
-Nf_v = [2, 4, 5, 6]#, 10]
-Ng_v = [10, 20, 100]
+methods_coarse = ['L2_P']# ['L2_P', 'az']
+methods_fine = ['L2_P', 'az']
+Nf_v = [4]#[2, 3, 4, 5, 6]#, 10]
+Ng_v = [100]#, 20]#, 100]
 
 if test == '1':
-    tau_v = [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1]#1, 0.5, 0.25, 0.1, 0.05, 0.025] #[1, 0.5]
+    tau_v ={'az': [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1], 'L2_P': [0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
+    # tau_v = [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1]#az#1, 0.5, 0.25, 0.1, 0.05, 0.025] #[1, 0.5]
+    #tau_v = [1.2,1.3,1.5,1.7,1.9]#az
     E_ref = {10: 0.79620688, 100: 1.97298868, 1000: 5.99303235}
     beta = 1000
 
     case_folder = folder / 'case_test1'
     case_folder.mkdir(parents=True, exist_ok=True)
     filename_results_GD = str(case_folder / 'GD.csv')
-    filename_results_PF = str(case_folder / 'PF_dtxNf_2x3.csv')
+    # filename_results_GD = str(case_folder / 'GD_conv.csv')
+    # filename_results_PF = str(case_folder / 'PFm_dt.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_dtxNf.csv')
 elif test == '2':
-    tau_v = [0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]
+    tau_v = {'az':list(np.linspace(0.05, 1.7,19)), 'L2_P':[0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
 
     beta = 1000
-    # tau_v = list(np.linspace(0.05, 1.7,19))
+    # tau_v = list(np.linspace(0.05, 1.7,19)) #az
     E_ref = {1000: 15.204825}
 
     case_folder = folder / 'case_test2'
     case_folder.mkdir(parents=True, exist_ok=True)
     filename_results_GD = str(case_folder / 'GD.csv')
-    filename_results_PF = str(case_folder / 'PF_dt_Nf.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_dt.csv')
 elif test == '3':
+    tau_v = {'az':list(np.linspace(0.5, 2.0, 15)), 'L2_P': [0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
     beta = 10
-    tau_v = list(np.linspace(0.5, 2.0, 15))
+    # tau_v = list(np.linspace(0.5, 2.0, 15)) #az
     E_ref = {10: 4.602621438437267}
 
     case_folder = folder / 'case_test3'
     case_folder.mkdir(parents=True, exist_ok=True)
-    filename_results_GD = str(case_folder / 'GD.csv')
-    filename_results_PF = str(case_folder / 'PF_dt.csv')
+    # filename_results_GD = str(case_folder / 'GD.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_dtxNf.csv')
 else:
     NameError('test must be 1, 2 or 3')
 
@@ -131,9 +136,9 @@ else:
 bcs = [fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4))]
 
 if is_save_CSV:
-    with open(filename_results_GD, "a", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
+    # with open(filename_results_GD, "a", newline="") as f:
+    #     writer = csv.writer(f)
+    #     writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
 
     with open(filename_results_PF, "a", newline="") as f:
         writer = csv.writer(f)
@@ -146,44 +151,48 @@ t_start = time.time()
 optim = ParaflowS(beta,v,W, bcs, 12 * 2**(-8))
 optim_GD = Gradient_Descent(beta,v,W, bcs, 12 * 2**(-8))
 
+done = True
+for name_fine in methods_fine:
+    # if name_fine == 'az':
+    #      done = False
 
-for tau in tqdm(tau_v):
-    for name_fine in methods_fine:
-        optim_GD.compile(u0, tau, E_ref[beta],grad_type = name_fine)
+    # if not(done):
+        for tau in tqdm(tau_v[name_fine]):
+            # optim_GD.compile(u0, tau, E_ref[beta],grad_type = name_fine)
 
-        filename = 'GD'+ name_fine + '_tau' + str(tau)
-        if is_save_log:
-            f = open(str(folder / (filename + '.log')), 'w')
-            sys.stdout = f
-        res = optim_GD.minimize(MaxIter, toll, is_save_log)
-        if is_save_plot:
-            optim_GD.plot_history(filesave = str(folder / (filename + '.png')))
+            # filename = 'GD'+ name_fine + '_tau' + str(tau)
+            # if is_save_log:
+            #     f = open(str(folder / (filename + '.log')), 'w')
+            #     sys.stdout = f
+            # res = optim_GD.minimize(MaxIter, toll, is_save_log)
+            # if is_save_plot:
+            #     optim_GD.plot_history(filesave = str(folder / (filename + '.png')))
 
-        if is_save_CSV:
-            optim_GD.save_data(filename_results_GD, res)
+            # if is_save_CSV:
+            #     optim_GD.save_data(filename_results_GD, res)
 
-        if is_save_log:
-            f.close()
+            # if is_save_log:
+            #     f.close()
 
-        #for name_coarse in methods_coarse:
-        name_coarse = name_fine
-        for Nf in Nf_v:
-            for Ng in Ng_v:
+            #for name_coarse in methods_coarse:
+            name_coarse = name_fine
+            for Nf in Nf_v:
+                for Ng in Ng_v:
 
-                optim.compile(u0, tau, tau / Nf, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
+                    optim.compile(u0, tau, tau *Nf, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
 
-                filename = 'PF'+ name_fine + '_' + name_coarse + '_tau' + str(tau) + '_Nf'+ str(Nf)+ '_Ng' + str(Ng)
-                if is_save_log:
-                    f = open(str(folder / (filename + '.log')), 'w')
-                    sys.stdout = f
-                res = optim.minimize(100, toll, is_save_log)
-                if is_save_plot:
-                    optim.plot_history(filesave = str(folder / (filename + '.png')))
-                if is_save_CSV:
-                    optim.save_data(filename_results_PF, res)
-                if is_save_log:
-                    f.close()
-            
-        sys.stdout = orig_stdout
+                    filename = 'PF'+ name_fine + '_' + name_coarse + '_tau' + str(tau) + '_Nf'+ str(Nf)+ '_Ng' + str(Ng)
+                    if is_save_log:
+                        f = open(str(folder / (filename + '.log')), 'w')
+                        sys.stdout = f
+                    res = optim.minimize(100, toll, is_save_log)
+                    if is_save_plot:
+                        optim.plot_history(filesave = str(folder / (filename + '.png')))
+                    if is_save_CSV:
+                        optim.save_data(filename_results_PF, res)
+                    if is_save_log:
+                        f.close()
+                    
+            sys.stdout = orig_stdout
 
-        print(f'Done {name_fine} minimization for tau = {tau} and beta = {beta} in {time.time() - t_start} seconds.')
+            print(f'Done {name_fine} minimization for tau = {tau} and beta = {beta} in {time.time() - t_start} seconds.')

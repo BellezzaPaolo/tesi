@@ -97,29 +97,48 @@ for h in h_v:
     # left 15.204824828806638 36.70796481994021
     # right 15.20482529108886 36.707967494741474
     # quad 15.197518877570118 36.69868898179708       15.257518727158924 36.77633207829467
-    filename = './Ground_Truth_2/U_GS_b'+str(beta)+'_N'+str(nx)+'Q.h5'
-    utils.save_uh(mesh, uh, filename)
+    # filename = './Ground_Truth_2/U_GS_b'+str(beta)+'_N'+str(nx)+'Q.h5'
+    # utils.save_uh(mesh, uh, filename)
 
-# Plot it
+# Plot the potential
+v_func = fd.Function(W)
+v_func.interpolate(v)
 fig, ax = plt.subplots()
-col = fd.tripcolor(fd.project(v,W), axes=ax, cmap = 'BrBG')
+col = fd.tripcolor(v_func, axes=ax, cmap='coolwarm')
 plt.colorbar(col)
 ax.axis('equal')
-plt.title('potential v(x)')
-fig.savefig("./images/plot_potential_b"+str(beta)+"_N"+str(h_v[-1])+".png")
-
+ax.axis('off')
+#plt.title(r'Potential: $V(x,y) = \frac{1}{2}(x^2 + y^2)+ 20 + 20* sin(2 \pi x) sin(2 \pi y)$')
+plt.show()
 # Plot it
-u2 = fd.Function(W)
-u2.interpolate( uh * uh)
+# fig, ax = plt.subplots()
+# col = fd.tripcolor(fd.project(v,W), axes=ax, cmap = 'BrBG')
+# plt.colorbar(col)
+# ax.axis('equal')
+# plt.title('potential v(x)')
+# fig.savefig("./images/plot_potential_b"+str(beta)+"_N"+str(h_v[-1])+".png")
 
+
+# Plot the final solution
 fig, ax = plt.subplots()
-col = fd.tripcolor(u2, axes=ax, cmap = 'coolwarm')
-print(max(u2.dat.data))
-cbar = plt.colorbar(col, extendrect = 'both')
-cbar.set_ticks(np.linspace(0.0, max(u2.dat.data), 11))
-
+col = fd.tripcolor(uh, axes=ax, cmap='coolwarm')
+plt.colorbar(col)
 ax.axis('equal')
-plt.title('Solution')
-fig.savefig("./images/plot_GS_b"+str(beta)+"_N"+str(h_v[-1])+".png")
+ax.axis('off')
+#plt.title(f'Final Solution ($h = 12 \\times 2^{{{int(np.log2(h/12))}}}$, $\\beta = {beta}$)')
+plt.show()
+# Plot it
+# u2 = fd.Function(W)
+# u2.interpolate( uh * uh)
+
+# fig, ax = plt.subplots()
+# col = fd.tripcolor(u2, axes=ax, cmap = 'coolwarm')
+# print(max(u2.dat.data))
+# cbar = plt.colorbar(col, extendrect = 'both')
+# cbar.set_ticks(np.linspace(0.0, max(u2.dat.data), 11))
+
+# ax.axis('equal')
+# plt.title('Solution')
+# fig.savefig("./images/plot_GS_b"+str(beta)+"_N"+str(h_v[-1])+".png")
 
 plt.show()

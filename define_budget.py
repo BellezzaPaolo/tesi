@@ -105,14 +105,15 @@ def plotting():
     import matplotlib.pyplot as plt
     import pandas as pd
 
-    df = pd.read_csv('./results/Budget_definition_pointwise.csv',
+    df = pd.read_csv('./results/Budget_definition_pointwise.csv', #'./results/Budget_definition_NG.csv',#'./results/Budget_definition_pointwise.csv',
                      dtype={"name_opt": str, "h": float, "N": int, "time_assemble": float, "time_step": float, "time_step2": float, "time_step3": float})
 
-    discard_first_N = 0 # discard the first point to have better scaling visibility
+    discard_first_N = 2 # discard the first point to have better scaling visibility
 
     h = (df["h"].unique())[discard_first_N:]
     methods = df['name_opt'].unique()
     N = (df['N'].unique())[discard_first_N:]
+    N = np.sqrt(N) # since N is the number of dofs, we take the square root to have the number of refinements
     
     T_assemble = []
     T_step = []
@@ -129,34 +130,39 @@ def plotting():
         T_assemble.append((method,Ta_m))
         T_step.append((method,Ts_m))
 
-    fig, ax = plt.subplots(2,1, figsize=(6,12))
+    fig, ax = plt.subplots(1,1, figsize=(14,10))
 
-    ax[0].set_title('Assemble Time')
-    ax[0].set_yscale('log', base = 2)
-    ax[0].set_xscale('log', base = 2)
-    ax[0].plot(N, N/N[0], 'k--', label='O(N)')
-    ax[0].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
-    for method, Ta_m in T_assemble:
-        ax[0].plot(N, Ta_m/Ta_m[0], 'o-', label=method)
-    ax[0].plot(N,(N/N[0])**1.5, 'k*',label = 'O(N^1.5)')
-    ax[0].plot(N,(N/N[0])**0.5, 'k.',label = 'O(N^0.5)')
-    ax[0].set_xlabel('N')
-    ax[0].set_ylabel('Time assemble [s]')
-    ax[0].legend()
-    ax[0].grid()
+    # ax[0].set_title('Assemble Time')
+    # ax[0].set_yscale('log', base = 2)
+    # ax[0].set_xscale('log', base = 2)
+    # ax[0].plot(N, N/N[0], 'k--', label='O(N)')
+    # ax[0].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
+    # for method, Ta_m in T_assemble:
+    #     ax[0].plot(N, Ta_m/Ta_m[0], 'o-', label=method)
+    # # ax[0].plot(N,(N/N[0])**1.5, 'k*',label = 'O(N^1.5)')
+    # # ax[0].plot(N,(N/N[0])**0.5, 'k.',label = 'O(N^0.5)')
+    # ax[0].set_xlabel('N')
+    # ax[0].set_ylabel('Time assemble [s]')
+    # ax[0].legend()
+    # ax[0].grid()
 
-    ax[1].set_title('Time Step')
-    ax[1].set_yscale('log', base = 2)
-    ax[1].set_xscale('log', base = 2)
-    ax[1].plot(N, (N/N[0]), 'k--', label='O(N)')
-    ax[1].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
+    # ax[0].set_title('Time Step')
+    ax.set_yscale('log', base = 2)
+    ax.set_xscale('log', base = 2)
+    ax.plot(N, (N/N[0]), 'k--', linewidth=3, markersize=10, label='O(N)')
+    ax.plot(N, (N/N[0])**2, 'k:', linewidth=3, markersize=10, label='O(N^2)')
     for method, Ts1_m in T_step:
-        ax[1].plot(N, Ts1_m/Ts1_m[0], 'o-', label=method)
-    ax[1].plot(N,(N/N[0])**0.75, 'k*',label = 'O(N^0.75)')
-    ax[1].set_xlabel('N')
-    ax[1].set_ylabel('Time step [s]')
-    ax[1].legend()
-    ax[1].grid()
+        if method == 'L2-Sobolev Gradient' or method == 'L2':
+            ax.plot(N, Ts1_m/Ts1_m[0], 's-', linewidth=4, markersize=12, label='$L^2$-SGF')
+        if method == 'au-Sobolev Gradient' or method == 'az':
+            ax.plot(N, Ts1_m/Ts1_m[0], 'o-', linewidth=3, markersize=10, label='$a_u$-SGF')
+    # ax[0].plot(N,(N/N[0])**0.75, 'k*',label = 'O(N^0.75)')
+    ax.set_xlabel('Number of refinements', fontsize=28, fontweight='bold')
+    ax.set_ylabel('Computational time [s]', fontsize=28, fontweight='bold')
+    ax.set_title('Computational time per iteration (Firedrake)', fontsize=30, fontweight='bold')
+    ax.legend(fontsize=28)#, fontweight='bold')
+    ax.tick_params(axis='both', which='major', labelsize=25)
+    ax.grid()
 
     plt.show()
 
