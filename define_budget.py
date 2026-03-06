@@ -105,7 +105,7 @@ def plotting():
     import matplotlib.pyplot as plt
     import pandas as pd
 
-    df = pd.read_csv('./results/Budget_definition_pointwise.csv', #'./results/Budget_definition_NG.csv',#'./results/Budget_definition_pointwise.csv',
+    df = pd.read_csv('./results/Budget_definition_NG.csv',#'./results/Budget_definition_pointwise.csv',
                      dtype={"name_opt": str, "h": float, "N": int, "time_assemble": float, "time_step": float, "time_step2": float, "time_step3": float})
 
     discard_first_N = 2 # discard the first point to have better scaling visibility
@@ -113,7 +113,7 @@ def plotting():
     h = (df["h"].unique())[discard_first_N:]
     methods = df['name_opt'].unique()
     N = (df['N'].unique())[discard_first_N:]
-    N = np.sqrt(N) # since N is the number of dofs, we take the square root to have the number of refinements
+    #N = np.sqrt(N) # since N is the number of dofs, we take the square root to have the number of refinements
     
     T_assemble = []
     T_step = []
@@ -159,7 +159,7 @@ def plotting():
     # ax[0].plot(N,(N/N[0])**0.75, 'k*',label = 'O(N^0.75)')
     ax.set_xlabel('Number of refinements', fontsize=28, fontweight='bold')
     ax.set_ylabel('Computational time [s]', fontsize=28, fontweight='bold')
-    ax.set_title('Computational time per iteration (Firedrake)', fontsize=30, fontweight='bold')
+    ax.set_title('Computational time per iteration (NGSolve)', fontsize=30, fontweight='bold')
     ax.legend(fontsize=28)#, fontweight='bold')
     ax.tick_params(axis='both', which='major', labelsize=25)
     ax.grid()

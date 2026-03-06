@@ -3,21 +3,28 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # Configuration
-case_folder = Path(__file__).parent / 'case_test3'
+case_folder = Path(__file__).parent / 'case_test2'
+
+# Extract test case number from folder name
+test_case_num = case_folder.name.replace('case_test', '')
+
 
 # Read CSV files
 print("Reading CSV files...")
 df_gd = pd.read_csv(case_folder / 'GD.csv')
-df_pf_dtxNf = pd.read_csv(case_folder / 'PF_dtxNf.csv')
-df_pf_dt = pd.read_csv(case_folder / 'PF_dt.csv')
-df_pf_dtxNf_2 = pd.read_csv(case_folder / 'PF_dtxNf_2.csv')
-df_pf_dtxNf_2x3 = pd.read_csv(case_folder / 'PF_dtxNf_2x3.csv')
-df_pf_dt_Nf = pd.read_csv(case_folder / 'PF_dt_Nf.csv')
+df_pf_dtxNf = pd.read_csv(case_folder / 'PFalpha_dtxNf.csv')
+df_pf_dt = pd.read_csv(case_folder / 'PFalpha_dt.csv')
+df_pf_dtxNf_2 = pd.read_csv(case_folder / 'PFalpha_dtxNf_2.csv')
+df_pf_dtxNf_2x3 = pd.read_csv(case_folder / 'PFalpha_dtxNf_2x3.csv')
+df_pf_dt_Nf = pd.read_csv(case_folder / 'PFalpha_dt_Nf.csv')
 
 N_fine = df_pf_dtxNf_2['N_fine'].unique()
 print(f"Unique N_fine values: {N_fine}")
-N_coarse = [10, 20] #df_pf_dtxNf['N_coarse'].unique()
+N_coarse = df_pf_dtxNf['N_coarse'].unique()
 opt = df_pf_dtxNf['fine_operator'].unique()
+
+
+color = {'L2_P': '#1f77b4', 'az': '#ff7f0e'}  # Blue for L2_P, Orange for az
 
 # Plot GD data
     #if name == 'L2_P':
@@ -37,7 +44,7 @@ for nf in N_fine:
                 label = fr'$L^2$-SGF'
             ax.plot(subset['tau'].values, it,
                 marker='o', linewidth=5, markersize=12,
-                label=label)
+                label=label, color=color[name])
 
             # subset_dtxNf = df_pf_dtxNf[(df_pf_dtxNf['N_fine'] == nf) & (df_pf_dtxNf['N_coarse'] == nc) & (df_pf_dtxNf['fine_operator'] == name)].sort_values('tau_fine')
             # subset_dt = df_pf_dt[(df_pf_dt['N_fine'] == nf) & (df_pf_dt['N_coarse'] == nc) & (df_pf_dt['fine_operator'] == name)].sort_values('tau_fine')
@@ -72,7 +79,7 @@ for nf in N_fine:
                 else:
                     label = fr'$L^2$-PF: $\tau_F \times N_F / 2$'
                 ax.plot(subset_dtxNf_2['tau_fine'].values, it,
-                    marker='d', linewidth=3, markersize=10, linestyle='--',
+                    marker='d', linewidth=3, markersize=10, linestyle='--', color = '#d62728',
                     label=label)
 
             else:
@@ -83,7 +90,7 @@ for nf in N_fine:
                 else:
                     label = fr'$L^2$-PF: $\tau_F \times N_F \times 1.5$'
                 ax.plot(subset_dtxNf_2x3['tau_fine'].values, it,
-                    marker='v', linewidth=3, markersize=10, linestyle='--',
+                    marker='v', linewidth=3, markersize=10, linestyle='--', color = '#2ca02c',
                     label=label)
 
             # it = (subset_dt_Nf['iterate_fine'] + subset_dt_Nf['iterate_coarse']).values.copy()
@@ -113,10 +120,10 @@ for nf in N_fine:
             best_pf = int(min(pf_iterations_all))
             
             # Format plot
-            ax.set_xlabel(r'Time step $\tau$', fontsize=28, fontweight='bold')
-            ax.set_ylabel('Computational cost', fontsize=28, fontweight='bold')
+            ax.set_xlabel(r'Time step $\tau$', fontsize=30, fontweight='bold')
+            ax.set_ylabel('Computational cost', fontsize=30, fontweight='bold')
             ax.set_title(fr'Computational cost vs time step $\tau$ ($N_F$={nf}, $N_G$={nc})', fontsize=30, fontweight='bold')
-            ax.legend(loc='upper center', fontsize=28, framealpha=0.9, ncol=2)
+            ax.legend(loc='upper center', fontsize=30, framealpha=0.9, ncol=2)
             
             # Add best values as text annotation
             if name == 'az':
@@ -128,15 +135,30 @@ for nf in N_fine:
             #     bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
             ax.set_yscale('log')
             ax.set_xscale('log')
+
+            # Fix y-axis for az method in test case 1
+            if test_case_num == '1':
+                ax.set_ylim([20, 300]) # ax.set_ylim([20, 500])
+                ax.set_xlim([0.1, 10])
+            # Fix y-axis for az method in test case 1
+            if test_case_num == '2':
+                ax.set_ylim([15, 2100]) # ax.set_ylim([20, 300])
+                ax.set_xlim([0.1, 10])
+            # Fix y-axis for az method in test case 1
+            if test_case_num == '3':
+                ax.set_ylim([20, 1000]) # ax.set_ylim([30, 1300])
+                ax.set_xlim([0.1, 10])
+            
             ax.grid(True, alpha=0.5, linestyle='-', which='both')
             
             # Set tick label sizes
-            ax.tick_params(axis='both', which='major', labelsize=25)
+            ax.tick_params(axis='both', which='major', labelsize=30)
+            ax.tick_params(axis='both', which='minor', labelsize=30)
 
             plt.tight_layout()
-        plt.show()
+        # plt.show()
         # exit()
-        #plt.savefig(case_folder / f'plot_{name}_Nf{nf}_Nc{nc}.png', dpi=300)
+        plt.savefig(case_folder / f'plot_{test_case_num}_comp_Nf{nf}_Nc{nc}.png', dpi=300)
         plt.close()
 
 print("Done!")

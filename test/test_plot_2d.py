@@ -21,12 +21,12 @@ nx = 256
 # beta_v = [1000]#,100,1000]
 MaxIter = 1000
 toll = 1e-5
-test = '1' # '1', '2' or '3'
+test = '3' # '1', '2' or '3'
 
 methods_coarse = ['L2_P']# ['L2_P', 'az']
 methods_fine = ['L2_P', 'az']
 Nf_v = [4]#[2, 3, 4, 5, 6]#, 10]
-Ng_v = [100]#, 20]#, 100]
+Ng_v = [10]#, 20]#, 100]
 
 if test == '1':
     tau_v ={'az': [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1], 'L2_P': [0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
@@ -40,7 +40,7 @@ if test == '1':
     filename_results_GD = str(case_folder / 'GD.csv')
     # filename_results_GD = str(case_folder / 'GD_conv.csv')
     # filename_results_PF = str(case_folder / 'PFm_dt.csv')
-    filename_results_PF = str(case_folder / 'PFalpha_dtxNf.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_dt.csv')
 elif test == '2':
     tau_v = {'az':list(np.linspace(0.05, 1.7,19)), 'L2_P':[0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
 
@@ -51,9 +51,10 @@ elif test == '2':
     case_folder = folder / 'case_test2'
     case_folder.mkdir(parents=True, exist_ok=True)
     filename_results_GD = str(case_folder / 'GD.csv')
-    filename_results_PF = str(case_folder / 'PFalpha_dt.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_dtxNf.csv')
 elif test == '3':
     tau_v = {'az':list(np.linspace(0.5, 2.0, 15)), 'L2_P': [0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
+    # [0.05,0.1]
     beta = 10
     # tau_v = list(np.linspace(0.5, 2.0, 15)) #az
     E_ref = {10: 4.602621438437267}
@@ -61,7 +62,7 @@ elif test == '3':
     case_folder = folder / 'case_test3'
     case_folder.mkdir(parents=True, exist_ok=True)
     # filename_results_GD = str(case_folder / 'GD.csv')
-    filename_results_PF = str(case_folder / 'PFalpha_dtxNf.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_dt.csv')
 else:
     NameError('test must be 1, 2 or 3')
 
@@ -149,7 +150,7 @@ t_start = time.time()
 
 
 optim = ParaflowS(beta,v,W, bcs, 12 * 2**(-8))
-optim_GD = Gradient_Descent(beta,v,W, bcs, 12 * 2**(-8))
+# optim_GD = Gradient_Descent(beta,v,W, bcs, 12 * 2**(-8))
 
 done = True
 for name_fine in methods_fine:
@@ -179,7 +180,7 @@ for name_fine in methods_fine:
             for Nf in Nf_v:
                 for Ng in Ng_v:
 
-                    optim.compile(u0, tau, tau *Nf, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
+                    optim.compile(u0, tau, tau, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
 
                     filename = 'PF'+ name_fine + '_' + name_coarse + '_tau' + str(tau) + '_Nf'+ str(Nf)+ '_Ng' + str(Ng)
                     if is_save_log:
