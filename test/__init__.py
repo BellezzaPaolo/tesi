@@ -1,1 +1,1 @@
-# Local test package for project utilities and plotting helpers.
+# file used only to import the potential of test case 3 also outside of this folder
