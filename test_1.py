@@ -1,5 +1,3 @@
-from math import tau
-
 import firedrake as fd
 import numpy as np
 import csv
