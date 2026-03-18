@@ -45,57 +45,77 @@ for h in h_v:
     u0 = fd.conditional(v < mu_TF, fd.sqrt((mu_TF - v)/beta), 0.0)
 
     E_ref = 15.204825
-    # L2 gradient
     optim_GD = Gradient_Descent(beta,v,W, bcs, h)
-    for tau in tau_L2:
-        optim_GD.compile(u0, tau, E_ref, grad_type = 'L2')
 
-        res = optim_GD.minimize(MaxIter, toll, False)
-        Iter_L2.append(res["iterate"])
+    # # L2 gradient
+    # for tau in tau_L2:
+    #     optim_GD.compile(u0, tau, E_ref, grad_type = 'L2')
 
-        # optim_GD.save_data(filename_results, res)
+    #     res = optim_GD.minimize(MaxIter, toll, False)
+    #     Iter_L2.append(res["iterate"])
 
-        # problem_L2.plot_history()
+    #     # optim_GD.save_data(filename_results, res)
 
-        if res["converged"]:
-            print()
-            print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
-            print()
-        else:
-            print()
-            print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
-            print()
+    #     # optim_GD.plot_history(show = True)
+
+    #     if res["converged"]:
+    #         print()
+    #         print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+    #         print()
+    #     else:
+    #         print()
+    #         print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+    #         print()
         
-    # a_z gradient
-    for tau in tau_az:
-        optim_GD.compile(u0, tau, E_ref, grad_type = 'az')
+    # # a_z gradient
+    # for tau in tau_az:
+    #     optim_GD.compile(u0, tau, E_ref, grad_type = 'az')
 
-        res = optim_GD.minimize(MaxIter, toll, False)
-        Iter_az.append(res["iterate"])
+    #     res = optim_GD.minimize(MaxIter, toll, False)
+    #     Iter_az.append(res["iterate"])
 
-        # optim_GD.save_data(filename_results, res)
+    #     # optim_GD.save_data(filename_results, res)
 
-        # problem_az.plot_history('az')
+    #     # optim_GD.plot_history(show = True)
 
-        if res["converged"]:
-            print()
-            print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
-            print()
-        else:
-            print()
-            print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
-            print()
+    #     if res["converged"]:
+    #         print()
+    #         print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+    #         print()
+    #     else:
+    #         print()
+    #         print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+    #         print()
 
-    plt.figure()
-    plt.loglog(tau_L2, Iter_L2, label = 'L2', marker = 'o')
-    plt.legend()
-    plt.xlabel('Step size (tau)')
-    plt.ylabel('Number of iterations to converge')
-    plt.show()
+    # az_ada gradient
+    optim_GD.compile(u0, E_ref, grad_type = 'az_ada')
 
-    plt.figure()
-    plt.loglog(tau_az, Iter_az, label = 'a_z', marker = 'x')
-    plt.legend()
-    plt.xlabel('Step size (tau)')
-    plt.ylabel('Number of iterations to converge')
-    plt.show()
+    res = optim_GD.minimize(MaxIter, toll, False)
+
+    # optim_GD.save_data(filename_results, res)
+
+    optim_GD.plot_history(show = True)
+
+    if res["converged"]:
+        print()
+        print(f'a_z adaptive minization with h: {h}, beta: {beta}, converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+        print()
+    else:
+        print()
+        print(f'a_z adaptive minization with h: {h}, beta: {beta}, did NOT converged in iterate: {res["iterate"]}')
+        print()
+
+
+    # plt.figure()
+    # plt.loglog(tau_L2, Iter_L2, label = 'L2', marker = 'o')
+    # plt.legend()
+    # plt.xlabel('Step size (tau)')
+    # plt.ylabel('Number of iterations to converge')
+    # plt.show()
+
+    # plt.figure()
+    # plt.loglog(tau_az, Iter_az, label = 'a_z', marker = 'x')
+    # plt.legend()
+    # plt.xlabel('Step size (tau)')
+    # plt.ylabel('Number of iterations to converge')
+    # plt.show()

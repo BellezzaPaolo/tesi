@@ -1,3 +1,5 @@
+from math import tau
+
 import firedrake as fd
 import numpy as np
 import csv
@@ -11,10 +13,10 @@ xmax, ymax = 6., 6.
 # the used h are below, this is only for the convergence test
 # h_v = [12 * 2**(-4), 12 * 2**(-6),12 * 2**(-7), 12 * 2**(-8),12 * 2**(-9)]
 h_v = [12 * 2**(-8)]#[12 * 2**(-6),12 * 2**(-8)]
-beta_v = [1000] #[10, 100, 1000]
+beta_v = [10, 100, 1000]
 # tau_v = [0.01, 0.005, 0.001]
 tau_v = list(np.sort(np.array(list(np.linspace(0.3,1.1,20)) + list(np.logspace(-4, 0, 10, base = 2)) + [1, 0.5] )))#[1, 0.5]
-methods = ['az']#['L2', 'H1', 'a0', 'az']
+methods = ['az_ada']#['L2', 'H1', 'a0', 'az']
 N_iter = []
 
 MaxIter = 60
@@ -45,31 +47,32 @@ for h in h_v:
 
         optim_GD = Gradient_Descent(beta,v,W, bcs, h)
 
-        for tau in tau_v[21:]:
-            for name in methods:
-                optim_GD.compile(u0, tau, E_ref[beta], grad_type = name)
+        #for tau in tau_v[21:]:
+        for name in methods:
 
-                res = optim_GD.minimize(MaxIter, toll,verbose = False)
+            optim_GD.compile(u0, E_ref[beta], grad_type = name)
 
-                N_iter.append(res["iterate"])
+            res = optim_GD.minimize(MaxIter, toll,verbose = False)
 
-                # optim_GD.save_data(filename_results, res)
+            N_iter.append(res["iterate"])
 
-                # optim_GD.plot_history()
+            # optim_GD.save_data(filename_results, res)
 
-                if res["converged"]:
-                    print()
-                    print(f'{name} minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
-                    print()
-                else:
-                    print()
-                    print(f'{name} minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
-                    print()
+            optim_GD.plot_history(show= True)
+   
+            if res["converged"]:
+                print()
+                print(f'{name} minization with h: {h}, beta: {beta} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+                print()
+            else:
+                print()
+                print(f'{name} minization with h: {h}, beta: {beta} did NOT converged in iterate: {res["iterate"]}')
+                print()
 
-plt.figure()
-plt.plot(tau_v, N_iter, marker='o',label='az')
-plt.xscale('log')
-plt.xlabel('Step size (tau)')
-plt.ylabel('Number of iterations to converge')
-plt.legend()
-plt.show()
+# plt.figure()
+# plt.plot(tau_v, N_iter, marker='o',label='az')
+# plt.xscale('log')
+# plt.xlabel('Step size (tau)')
+# plt.ylabel('Number of iterations to converge')
+# plt.legend()
+# plt.show()

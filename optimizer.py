@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import time
-from gradients import gradient_L2, gradient_L2_fully_expli, gradient_L2_P, gradient_H1, gradient_a0, gradient_az
+from gradients import gradient_L2, gradient_L2_fully_expli, gradient_L2_P, gradient_H1, gradient_a0, gradient_az, gradient_az_ada
 
 class Optimizer(abc.ABC):
     """
@@ -104,11 +104,14 @@ class Optimizer(abc.ABC):
         elif grad_type in ['a0', 'a_0']:
             return gradient_a0(self.W, self.bcs, self.h, self.beta, self.v)
 
+        elif grad_type in ['az_ada', 'a_z_ada']:
+            return gradient_az_ada(self.W, self.bcs, self.h, self.beta, self.v)
+
         elif grad_type in ['az', 'a_z']:
             return gradient_az(self.W, self.bcs, self.h, self.beta, self.v)
             
         else:
-            raise NotImplementedError('type of Sobolev gradient not implemented. Supported one are: L2, L2e, H1, a0, az')
+            raise NotImplementedError('type of Sobolev gradient not implemented. Supported one are: L2, L2e, H1, a0, az, az_ada')
     
     def compile(self, u0, E_ref):
         '''
@@ -154,7 +157,7 @@ class Gradient_Descent(Optimizer):
         '''
         super().__init__('GD',beta, v, W, bcs, h)
         
-    def compile(self, u0, tau, E_ref, grad_type):
+    def compile(self, u0, E_ref, grad_type, tau = None):
 
         super().compile(u0, E_ref)
 
@@ -253,6 +256,19 @@ class Gradient_Descent(Optimizer):
         if filesave is not None:
             fig.savefig(filesave)
             plt.close(fig)
+
+        if hasattr(self.solver, 'tau_history') and self.solver.tau_history is not None:
+            plt.figure()
+            plt.plot(range(1,len(self.solver.tau_history)+1), self.solver.tau_history, marker='o')
+            plt.xlabel('Iteration')
+            plt.ylabel('Tau value')
+            plt.title('Tau history')
+            plt.grid(True)
+            if show:
+                plt.show()
+            if filesave is not None:
+                plt.savefig(filesave.replace('.png','_tau.png'))
+                plt.close()
 
     def save_data(self, filename, res):
         '''

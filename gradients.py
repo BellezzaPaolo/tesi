@@ -1,5 +1,7 @@
 import abc
 import firedrake as fd
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class gradient(abc.ABC):
@@ -67,7 +69,9 @@ class gradient_L2_fully_expli(gradient):
         :param tau (float): time step
         :param lump (bool): decides if the system is solved with lumping or not
         '''
-
+        if tau is None:
+            raise ValueError("The time step tau must be provided for the L2 explicit gradient")
+        
         self.tau = fd.Constant(tau)
 
         # assemble the mass matrix with or without lumping
@@ -105,8 +109,6 @@ class gradient_L2_fully_expli(gradient):
         # M u^n+1 = Mu^n - τ ( 0.5 * A + v M + β N(u^2) )u^n + τ intE/intR * Mu^n
         self.solver_Mass.solve(self.uh, rhs)
 
-        
-
 
 class gradient_L2(gradient):
     def __init__(self, W, bcs, h, beta, v):
@@ -119,6 +121,9 @@ class gradient_L2(gradient):
         :param tau (float): time step
         '''
 
+        if tau is None:
+            raise ValueError("The time step tau must be provided for the L2 gradient")
+        
         self.tau = fd.Constant(tau)
 
         self.a = self.u * self.w * fd.dx \
@@ -152,7 +157,9 @@ class gradient_L2_P(gradient):
 
         :param tau (float): time step
         '''
-
+        if tau is None:
+            raise ValueError("The time step tau must be provided for the L2_P gradient")
+        
         self.tau = fd.Constant(tau)
 
         self.a = self.u * self.w * fd.dx \
@@ -187,7 +194,9 @@ class gradient_H1(gradient):
 
         :param tau (float): time step
         '''
-
+        if tau is None:
+            raise ValueError("The time step tau must be provided for the H1 gradient")
+        
         self.tau = fd.Constant(tau)
 
         self.A = fd.assemble(0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx, bcs = self.bcs)
@@ -227,7 +236,6 @@ class gradient_H1(gradient):
         self.uh.assign(u_old - self.tau * self.gradE + self.tau * intE/intR * self.R_u)
 
 
-            
 class gradient_a0(gradient):
     def __init__(self, W, bcs, h, beta, v):
         super().__init__(W, bcs, h, beta, v,'a0')
@@ -238,6 +246,9 @@ class gradient_a0(gradient):
 
         :param tau (float): time step
         '''
+        if tau is None:
+            raise ValueError("The time step tau must be provided for the a_0 gradient")
+        
         self.tau = fd.Constant(tau)
 
         # assemble the solver for Riesz projections
@@ -280,7 +291,7 @@ class gradient_az(gradient):
     def __init__(self, W, bcs, h, beta, v):
         super().__init__(W, bcs, h, beta, v,'az')
 
-    def assemble_problem(self, tau):
+    def assemble_problem(self, tau = None):
         '''
         Allocate and assembles forms and minimization quantities
 
@@ -288,6 +299,9 @@ class gradient_az(gradient):
         :param tau (float): time step
         :param u_ref (fd.Function): reference solution
         '''
+        if tau is None:
+            raise ValueError("The time step tau must be provided for the a_z gradient")
+        
         self.tau = fd.Constant(tau)
 
         # initialize the forms for the Riesz solver
@@ -307,9 +321,6 @@ class gradient_az(gradient):
         # compute Riesz
         rhs_R = fd.inner(u_old , self.w) * fd.dx
 
-        # from petsc4py import PETSc
-        # fd.assemble(self.a + self.beta * abs(u_old)**2 * self.u * self.w * fd.dx, bcs = self.bcs).M.handle.view(viewer=PETSc.Viewer.STDOUT_WORLD)
-
         problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(u_old)**2 * self.u * self.w * fd.dx,
                                                 rhs_R,
                                                 self.R_u,
@@ -322,3 +333,100 @@ class gradient_az(gradient):
         intR = fd.assemble(self.R_u * u_old * fd.dx)
 
         self.uh.assign((1 - self.tau) * u_old + self.tau * 1/intR * self.R_u)
+
+class gradient_az_ada(gradient):
+    def __init__(self, W, bcs, h, beta, v):
+        super().__init__(W, bcs, h, beta, v, 'az_ada')
+    
+    def assemble_problem(self, tau = None):
+        '''
+        Allocate and assembles forms and minimization quantities
+
+        :param u0 (fd.Function): initial guess
+        :param u_ref (fd.Function): reference solution
+        '''
+        # initialize the forms for the Riesz solver
+        self.R_u = fd.Function(self.W)
+
+        self.a = 0.5 * fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
+                + self.v * self.u * self.w * fd.dx
+
+        self.tau_history = []
+
+    def golden_search(self, func, a = 0.01, b = 2.0, tol = 1e-5):
+        """
+        Golden-section search
+        to find the minimum of f on [a,b]
+
+        * f: a strictly unimodal function on [a,b]
+
+        Example:
+        >>> def f(x): return (x - 2) ** 2
+        >>> x = gss(f, 1, 5)
+        >>> print(f"{x:.5f}")
+        2.00000
+
+        """
+        invphi = (fd.sqrt(5) - 1) / 2  # 1 / phi
+
+        # x = np.linspace(0, 10, 100)
+        # fig, ax = plt.subplots()
+        # ax.plot(x, func(x))
+        # plt.legend()
+        # plt.show()
+
+        while b - a > tol:
+            c = b - (b - a) * invphi
+            d = a + (b - a) * invphi
+            if func(c) < func(d):
+                b = d
+            else:  # func(c) > func(d) to find the maximum
+                a = c
+        return (b + a) / 2
+
+    def step(self, u_old):
+        '''
+        Implements one step of the a_z gradient with adaptive step size
+        '''
+        if fd.norm(u_old, 'L2')-1 >1e-12:
+            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
+
+        # compute Riesz
+        rhs_R = fd.inner(u_old , self.w) * fd.dx
+
+        problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(u_old)**2 * self.u * self.w * fd.dx,
+                                                rhs_R,
+                                                self.R_u,
+                                                self.bcs)
+        solver_R = fd.LinearVariationalSolver(problem_R)#, solver_parameters={"ksp_view": None})
+        solver_R.solve()
+
+
+        # compute solution
+        # intE = fd.assemble(u_old * u_old * fd.dx) # should be 1 in exact aritmetic because it's simply the norm of hte previous uh
+        intR = fd.assemble(self.R_u * u_old * fd.dx)
+        
+        alpha0 = fd.assemble(0.5 * fd.inner(fd.grad(u_old), fd.grad(u_old)) * fd.dx \
+                             + self.v * u_old * u_old * fd.dx)
+        alpha1 = 2 / intR * fd.assemble(0.5 * fd.inner(fd.grad(self.R_u), fd.grad(u_old)) * fd.dx \
+                             + self.v * self.R_u * u_old * fd.dx)
+        alpha2 = 1/intR**2 * fd.assemble(0.5 * fd.inner(fd.grad(self.R_u), fd.grad(self.R_u)) * fd.dx \
+                             + self.v * self.R_u * self.R_u * fd.dx)
+        beta0 = fd.assemble(self.beta * 0.5 * (u_old)**4 * fd.dx) 
+        beta1 = fd.assemble(self.beta * 2 * (u_old)**3 * self.R_u /intR * fd.dx)
+        beta2 = fd.assemble(self.beta * 3 * (u_old)**2 * self.R_u**2 /intR**2 * fd.dx)
+        beta3 = fd.assemble(self.beta * 2 * u_old * self.R_u**3 /intR**3 * fd.dx)
+        beta4 = fd.assemble(self.beta * 0.5 * self.R_u**4 /intR**4 * fd.dx)
+        gamma0 = fd.assemble(u_old**2 * fd.dx)
+        gamma1 = fd.assemble(2 * u_old * self.R_u /intR * fd.dx)
+        gamma2 = fd.assemble(self.R_u**2 /intR**2 * fd.dx)
+
+        den = lambda x: ((1- x)**2 * gamma0 + (1-x)* x * gamma1 + x**2 * gamma2)**0.5
+        f  = lambda x: alpha0 / den(x)**2 * (1-x)**2 + alpha1 / den(x)**2 * (1-x)*x + alpha2 / den(x)**2 * x**2 \
+            + beta0 / den(x)**4 * (1-x)**4 + beta1 / den(x)**4 * (1-x)**3 * x + beta2 / den(x)**4 * (1-x)**2 * x**2 + beta3 / den(x)**4 * (1-x) * x**3 + beta4 / den(x)**4 * x**4
+
+        self.tau = fd.Constant(self.golden_search(f))
+
+        self.uh.assign((1 - self.tau) * u_old + self.tau * 1/intR * self.R_u)
+
+        self.tau_history.append(float(self.tau))
