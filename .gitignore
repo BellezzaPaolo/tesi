@@ -1,10 +1,5 @@
-Ground_Truth_1/
-Ground_Truth_2/
-Ground_Truth_3/
 __pycache__
-old/*
 results/
-images/
 log/
 
 *.pdf
@@ -13,9 +8,3 @@ log/
 *.log
 *.csv
 *.tex
-*.txt
-
-NG_solve/test_1_ngsolve.py
-ParaFlows_R2.py
-test_chat.py
-test_gemini.py

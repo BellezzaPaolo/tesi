@@ -1,0 +1,28 @@
+KSP Object: (firedrake_0_) 1 MPI process
+  type: preonly
+  maximum iterations=10000, initial guess is zero
+  tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
+  left preconditioning
+  using NONE norm type for convergence test
+PC Object: (firedrake_0_) 1 MPI process
+  type: lu
+    out-of-place factorization
+    tolerance for zero pivot 2.22045e-14
+    matrix ordering: nd
+    factor fill ratio given 5., needed 11.1145
+      Factored matrix follows:
+        Mat Object: (firedrake_0_) 1 MPI process
+          type: seqaij
+          rows=66049, cols=66049
+          package used to perform factorization: petsc
+          total: nonzeros=5115867, allocated nonzeros=5115867
+            not using I-node routines
+  linear system matrix = precond matrix:
+  Mat Object: 1 MPI process
+    type: seqaij
+    rows=66049, cols=66049
+    total: nonzeros=460289, allocated nonzeros=460289
+    total number of mallocs used during MatSetValues calls=0
+      not using I-node routines
+
+
