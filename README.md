@@ -121,6 +121,7 @@ Many scripts append to existing CSV files, so you may want to back up or clear o
 - Mesh and potential definitions are script-specific.
 - Several scripts hard-code parameter grids (`beta`, `tau`, `Nf`, `Ng`, tolerances, iteration limits).
 - Some random-potential experiments use fixed seeds for reproducibility.
+- The exact repository state at the end of the thesis can be retrieved by browsing the commit entitled "end of thesis work".
 
 For exact reproducibility, use the same environment, same script parameters, and clean output CSV files before re-running.
 
