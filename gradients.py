@@ -1,3 +1,10 @@
+"""Sobolev-gradient operators used by GD and ParaflowS drivers.
+
+Each class implements:
+- `assemble_problem(...)` to build fixed forms/solvers,
+- `step(u_old)` to compute one constrained update from the current iterate.
+"""
+
 import abc
 import firedrake as fd
 import numpy as np
@@ -38,7 +45,7 @@ class gradient(abc.ABC):
         # discretization parameters
         self.h = h
 
-        # parametrs of the problem
+        # Parameters of the nonlinear GPE problem.
         self.beta = beta
         self.v = v
 
@@ -74,7 +81,7 @@ class gradient_L2_fully_expli(gradient):
         
         self.tau = fd.Constant(tau)
 
-        # assemble the mass matrix with or without lumping
+        # Assemble mass matrix (optionally mass-lumped) used at each explicit step.
         if lump:
             self.M = fd.assemble(self.u * self.w * fd.dx, bcs = self.bcs, form_compiler_parameters={"quadrature_rule": "KMV","quadrature_degree": self.W.ufl_element().degree()})
 
@@ -95,7 +102,8 @@ class gradient_L2_fully_expli(gradient):
         if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
-        # intE = ∫ 0.5 ∇u∇u + Vu^2 + β |u|^2 uudx
+        # Evaluate energy-like scaling terms used by the explicit update.
+        # intE = ∫ 0.5 ∇u∇u + Vu^2 + β |u|^2 u u dx
         intE = fd.assemble(0.5 * fd.dot(fd.grad(u_old), fd.grad(u_old)) * fd.dx + self.v * u_old * u_old * fd.dx + self.beta * abs(u_old)**2 * u_old * u_old * fd.dx)
         # intR = ∫ u^2 dx
         intR = fd.assemble(u_old * u_old * fd.dx)
@@ -126,6 +134,7 @@ class gradient_L2(gradient):
         
         self.tau = fd.Constant(tau)
 
+        # Linear part fixed across iterations; nonlinear term is added in step().
         self.a = self.u * self.w * fd.dx \
             + self.tau * 0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
             + self.tau * self.v * self.u * self.w * fd.dx
@@ -173,6 +182,7 @@ class gradient_L2_P(gradient):
         if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
+        # Dynamic scalar shift to improve stability/monotonicity of L2 updates.
         shift = (fd.assemble((0.5 * fd.dot(fd.grad(u_old), fd.grad(u_old)) + self.v * u_old * u_old + self.beta * abs(u_old)**2 * u_old * u_old)* fd.dx))/fd.assemble(u_old * u_old * fd.dx)
         rhs = (1 + self.tau * shift) * u_old * self.w * fd.dx
         
@@ -201,7 +211,7 @@ class gradient_H1(gradient):
 
         self.A = fd.assemble(0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx, bcs = self.bcs)
 
-        # assemble the solver for the Riesz rappresentation and gradient
+        # Pre-factorized stiffness solve for repeated Riesz projections.
         self.R_u = fd.Function(self.W)
         self.gradE = fd.Function(self.W)
         self.solver_Stiffnes = fd.LinearSolver(self.A)#, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
@@ -216,19 +226,19 @@ class gradient_H1(gradient):
         if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
-        # compute the Riesz projection
+        # Riesz map of u_old.
         rhs_R = fd.assemble(u_old * self.w * fd.dx)
 
         self.solver_Stiffnes.solve(self.R_u, rhs_R)
         
-        # compute the gradient
+        # Riesz map of the energy gradient.
         rhs_E = fd.assemble(0.5 * fd.dot(fd.grad(u_old), fd.grad(self.w)) * fd.dx \
                 + self.v * u_old * self.w * fd.dx \
                 + self.beta * abs(u_old) **2 * u_old * self.w * fd.dx)
 
         self.solver_Stiffnes.solve(self.gradE, rhs_E)
 
-        # compute the solution
+        # Constrained descent update in H1 geometry.
 
         intE = fd.assemble(self.gradE * u_old * fd.dx)
         intR = fd.assemble(self.R_u * u_old * fd.dx)
@@ -251,7 +261,7 @@ class gradient_a0(gradient):
         
         self.tau = fd.Constant(tau)
 
-        # assemble the solver for Riesz projections
+        # Solver used by both Riesz projections in the a0 metric.
         self.R_u = fd.Function(self.W)
         self.R_u2u = fd.Function(self.W)
 
@@ -272,7 +282,7 @@ class gradient_a0(gradient):
         if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
-        # compute reisz prjections
+        # Compute Riesz projections entering the closed-form update.
         rhs_Ru = fd.assemble(u_old * self.w * fd.dx)
         self.solver_Stiffness.solve(self.R_u, rhs_Ru)
 
@@ -280,7 +290,7 @@ class gradient_a0(gradient):
 
         self.solver_Stiffness.solve(self.R_u2u,rhs_Ru2u)
 
-        # compute the solution
+        # Constrained update in the a0 metric.
         intE = fd.assemble((u_old + self.R_u2u) * u_old * fd.dx)
         intR = fd.assemble(self.R_u * u_old * fd.dx)
 
@@ -304,7 +314,7 @@ class gradient_az(gradient):
         
         self.tau = fd.Constant(tau)
 
-        # initialize the forms for the Riesz solver
+        # Build the linear part used in the nonlinear Riesz solve at each step.
         self.R_u = fd.Function(self.W)
 
         self.a = 0.5 * fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
@@ -318,7 +328,7 @@ class gradient_az(gradient):
         if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
-        # compute Riesz
+        # Solve nonlinear Riesz system associated with current iterate.
         rhs_R = fd.inner(u_old , self.w) * fd.dx
 
         problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(u_old)**2 * self.u * self.w * fd.dx,
@@ -328,7 +338,7 @@ class gradient_az(gradient):
         solver_R = fd.LinearVariationalSolver(problem_R)#, solver_parameters={"ksp_view": None})
         solver_R.solve()
 
-        # compute solution
+        # Update as a convex combination of u_old and normalized Riesz direction.
         # intE = fd.assemble(u_old * u_old * fd.dx) # should be 1 in exact aritmetic because it's simply the norm of hte previous uh
         intR = fd.assemble(self.R_u * u_old * fd.dx)
 
@@ -345,7 +355,7 @@ class gradient_az_ada(gradient):
         :param u0 (fd.Function): initial guess
         :param u_ref (fd.Function): reference solution
         '''
-        # initialize the forms for the Riesz solver
+        # Build common forms; tau is selected adaptively inside step().
         self.R_u = fd.Function(self.W)
 
         self.a = 0.5 * fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
@@ -367,6 +377,7 @@ class gradient_az_ada(gradient):
         2.00000
 
         """
+        # Golden-section search over scalar step size interval [a, b].
         invphi = (fd.sqrt(5) - 1) / 2  # 1 / phi
 
         # x = np.linspace(0, 10, 100)
@@ -391,7 +402,7 @@ class gradient_az_ada(gradient):
         if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
 
-        # compute Riesz
+        # Compute nonlinear Riesz direction first.
         rhs_R = fd.inner(u_old , self.w) * fd.dx
 
         problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(u_old)**2 * self.u * self.w * fd.dx,
@@ -402,7 +413,7 @@ class gradient_az_ada(gradient):
         solver_R.solve()
 
 
-        # compute solution
+        # Build polynomial/rational energy model along the update direction.
         # intE = fd.assemble(u_old * u_old * fd.dx) # should be 1 in exact aritmetic because it's simply the norm of hte previous uh
         intR = fd.assemble(self.R_u * u_old * fd.dx)
         
@@ -436,6 +447,7 @@ class gradient_az_ada(gradient):
                     + beta3 / d4 * (1-x) * x**3 
                     + beta4 / d4 * x**4)
 
+        # Choose tau adaptively by 1D minimization of the model energy.
         self.tau = fd.Constant(self.golden_search(f))
 
         self.uh.assign((1 - self.tau) * u_old + self.tau * 1/intR * self.R_u)

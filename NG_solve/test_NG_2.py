@@ -1,3 +1,9 @@
+"""NGSolve experiment: optical-lattice potential at beta=1000.
+
+Runs L2 and az gradients over different step-size grids and stores
+convergence/performance statistics to CSV.
+"""
+
 from gradients_NG import *
 import ngsolve as ng
 from netgen.geom2d import SplineGeometry
@@ -5,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 
+# Parameter setup for test case 2.
 hmax = 12 * 2**(-8)
 order = 1
 dirichlet_bcs = 'outer'
@@ -20,10 +27,12 @@ initial_guess = 'Thomas-Fermi density'
 
 filename = '../results/test_NG_2.csv'
 
+# Create/append CSV with fixed schema.
 with open(filename, "a", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(['optimizer_name', 'h', 'beta', 'tau', 'energy', 'lambda', 'iterate', 'error', 'total_time', 'mean_time'])
 
+# Build computational mesh for the square domain.
 geo = SplineGeometry()
 geo.AddRectangle(p1=(-6, -6), p2=(6, 6), bc="outer")
 
@@ -51,7 +60,7 @@ mesh = ng.Mesh(ngmesh)
 # plt.show()
 # exit()
 
-# L2 gradient
+# L2 gradient sweep.
 grad_L2 = Gradient_L2(beta, potential, hmax, mesh, order, dirichlet_bcs)
 
 for tau in tau_L2:
@@ -65,7 +74,7 @@ for tau in tau_L2:
     else:
         print(f'L2 minization with h: {hmax}, beta: {beta}, tau: {tau} did NOT converged in iterate: {res["iterate"]}')
 
-# az gradient
+# az gradient sweep.
 grad_az = Gradient_az(beta, potential, hmax, mesh, order, dirichlet_bcs)
 
 for tau in tau_az:

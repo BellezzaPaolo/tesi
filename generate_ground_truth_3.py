@@ -1,8 +1,14 @@
+"""Ground-truth run for case 3: random-disorder potential.
+
+The potential is generated on a fine DG grid, transferred to the PDE mesh, and
+used in a high-accuracy normalized iterative solve for a reference solution.
+"""
+
 import firedrake as fd
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
-import utils
+import old.utils as utils
 from test.pot_3 import RandomDisorderPotential
 # import time
 from matplotlib.colors import LinearSegmentedColormap
@@ -13,8 +19,7 @@ rng = np.random.default_rng(21)
 
 
 def assemble_forms(u, w, v, tau, u_old, beta_c):
-    # ensure numeric parameters are UFL Constants to avoid premature python-side
-    # evaluation that can produce plain Python numbers instead of UFL expressions
+    # Keep tau symbolic to assemble a consistent UFL variational form.
     tau_c = fd.Constant(tau)
 
     a = u * w * fd.dx \
@@ -36,11 +41,10 @@ nyV = int((ymax - ymin) / (epsilon))
 
 meshV = fd.RectangleMesh(nxV, nyV, xmax, ymax, originX=xmin, originY=ymin, quadrilateral=True)
 
-# Function space for a cellwise-constant potential
+# DG0 space for piecewise-constant random potential values.
 Vdg = fd.FunctionSpace(meshV, "DG", 0)   # piecewise-constant per cell
 
-# Create random disorder potential using the RandomDisorderPotential class
-# Using seed=21 for consistency with the original rng seed
+# Random potential with fixed seed for reproducibility.
 potential_obj = RandomDisorderPotential(number_of_cells=400, domain_size=12.0, seed=21)
 
 # Create the DG0 function for the potential
@@ -76,11 +80,11 @@ coord_fn = fd.Function(fd.VectorFunctionSpace(mesh, 'DG', 0))
 coord_fn.interpolate(x_dg)
 coords = coord_fn.dat.data_ro
 
-# Step 2: Evaluate V_random at those coordinates
+# Evaluate source potential on target mesh cell coordinates.
 vals = np.array([V_random.at((float(px), float(py)), tolerance=1e-10)
                  for px, py in coords])
 
-# Step 3: assign to the DG0 field on the triangular mesh
+# Assign sampled values to DG0 field on PDE mesh.
 v.dat.data[:] = vals
 
 print("V_random stats: min, max, mean, unique counts:",
@@ -91,7 +95,7 @@ print("v (on PDE mesh) stats: min, max, mean, unique counts:",
       float(np.min(v.dat.data[:])), float(np.max(v.dat.data[:])), float(np.mean(v.dat.data[:])),
       np.unique(v.dat.data[:]).size)
 
-# check lengths
+# Basic checks to verify transfer consistency.
 print("n_cells source:", len(V_random.dat.data[:]), "n_cells target:", len(v.dat.data[:]))
 
 print("meshV cellsize target approx:", (xmax-xmin)/nxV, (ymax-ymin)/nyV)
@@ -110,7 +114,7 @@ print("epsilon:", epsilon, "h (PDE):", h)
 # ax[1].axis('equal')
 # plt.show()
 
-# Plot the potential
+# Plot the transferred random potential.
 v_func = fd.Function(W)
 v_func.interpolate(v)
 
@@ -150,7 +154,7 @@ bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]
 
 tau = 10 #[1., 0.5]
 
-# define the variational problem
+# Variational unknowns and Thomas-Fermi-type initialization.
 u = fd.TrialFunction(W)
 w = fd.TestFunction(W)
 
@@ -171,6 +175,7 @@ def energy(uh, v = v, beta = beta):
     return fd.assemble(0.5 *( 0.5 * fd.inner(fd.grad(uh), fd.grad(uh)) + (v * uh )* uh + beta/2 * uh * uh *uh * uh) * fd.dx)
 
 
+# Direct solver setup for robust reference iterations.
 param = {'ksp_type': 'preonly', 'pc_type': 'lu', 'pc_factor_mat_solver_type': 'mumps'}
 
 MaxIter = 1000
@@ -178,6 +183,7 @@ toll = 1e-12
 
 
 for i in range(MaxIter):
+    # Implicit update followed by normalization to preserve mass constraint.
     a, rhs = assemble_forms(u, w, v, tau, u_old, beta_c)
     problem = fd.LinearVariationalProblem(a, rhs, uh, bcs)
     solver =  fd.LinearVariationalSolver(problem, solver_parameters=param)
@@ -195,6 +201,7 @@ for i in range(MaxIter):
     if error < toll:
         break
 
+# Final reference quantities.
 e_gs = energy(uh)
 lamb_gs = 2 * e_gs + beta/2 * fd.norm(uh,'L4')**4
 
@@ -213,7 +220,7 @@ print(f'Final energy estimate: {e_gs} and associated lambda: {lamb_gs} with h: {
 # filename = './Ground_Truth_3/U_GS_b'+str(beta)+'_N'+str(nx)+'.h5'
 # utils.save_uh(mesh, uh, filename)
 
-# Plot the final solution
+# Plot converged state.
 fig, ax = plt.subplots()
 col = fd.tripcolor(uh, axes=ax, cmap='coolwarm')
 plt.colorbar(col)

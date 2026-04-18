@@ -1,3 +1,10 @@
+"""Benchmark assembly and step costs for Sobolev-gradient methods.
+
+This script is used to estimate computational budget across mesh refinements.
+It can run one benchmark point (via --log2h) or plot aggregated results
+from an existing CSV file (via --plot).
+"""
+
 import csv
 import time
 import argparse
@@ -5,6 +12,7 @@ import sys
 import numpy as np
 
 def compute_times(log2h):
+    # Convert log2(h) to actual mesh size h.
     h = 2**log2h
     beta = 10
     tau = 0.2
@@ -13,6 +21,7 @@ def compute_times(log2h):
     import firedrake as fd
     import gradients
 
+    # Build test problem on the unit square.
     mesh = fd.UnitSquareMesh(int(1/h), int(1/h))
     W = fd.FunctionSpace(mesh, "CG", 1)
     bcs = [fd.DirichletBC(W, fd.Constant(0.0), (1, 2, 3, 4))]
@@ -21,13 +30,13 @@ def compute_times(log2h):
     v = 0.5 * (x[0]**2 + x[1]**2)
     N = W.dim()
 
-    # PCG64 random number generator
+    # Random initial condition used consistently across method timings.
     pcg = fd.PCG64()#seed=123456789)
     rg = fd.RandomGenerator(pcg)
-    # beta distribution
+    # Draw from a beta distribution to avoid a too-regular initial state.
     u0 = rg.beta(W, 1.0, 2.0)
 
-    # L2 gradient
+    # L2 gradient: assemble once as warm-up, then time assemble and one step.
     problem_L2 = gradients.gradient_L2(beta, v, W, bcs, h)
 
 
@@ -43,11 +52,12 @@ def compute_times(log2h):
 
     print(f'h: {h}, N: {N}, time assemble: {time_assemble}, time step: {time_step}')
 
+    # Append one benchmark row per method.
     with open(filename_results, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['L2',h, N, time_assemble, time_step])
 
-    # H1 gradient
+    # H1 gradient benchmark.
     problem_H1 = gradients.gradient_H1(beta, v, W, bcs, h)
 
     problem_H1.assemble_problem(u0, tau)
@@ -65,7 +75,7 @@ def compute_times(log2h):
         writer = csv.writer(file)
         writer.writerow(['H1',h, N, time_assemble, time_step])
 
-    # a_0 gradient
+    # a0 gradient benchmark.
     problem_a0 = gradients.gradient_a0(beta, v, W, bcs, h)
     problem_a0.assemble_problem(u0, tau)
     t0 = time.time()
@@ -83,7 +93,7 @@ def compute_times(log2h):
         writer = csv.writer(file)
         writer.writerow(['a0',h, N, time_assemble, time_step])
 
-    # az gradient
+    # az gradient benchmark.
     problem_az = gradients.gradient_az(beta, v, W, bcs, h)
     problem_az.assemble_problem(u0,tau)
     t0 = time.time()
@@ -102,13 +112,15 @@ def compute_times(log2h):
         writer.writerow(['az',h, N, time_assemble, time_step])
 
 def plotting():
+    # Import plotting dependencies only when needed.
     import matplotlib.pyplot as plt
     import pandas as pd
 
     df = pd.read_csv('./results/Budget_definition_NG.csv',#'./results/Budget_definition_pointwise.csv',
                      dtype={"name_opt": str, "h": float, "N": int, "time_assemble": float, "time_step": float, "time_step2": float, "time_step3": float})
 
-    discard_first_N = 2 # discard the first point to have better scaling visibility
+    # Discard smallest meshes to improve readability in log-log scaling plots.
+    discard_first_N = 2
 
     h = (df["h"].unique())[discard_first_N:]
     methods = df['name_opt'].unique()
@@ -146,7 +158,7 @@ def plotting():
     # ax[0].legend()
     # ax[0].grid()
 
-    # ax[0].set_title('Time Step')
+    # Plot step-cost scaling and theoretical O(N), O(N^2) references.
     ax.set_yscale('log', base = 2)
     ax.set_xscale('log', base = 2)
     ax.plot(N, (N/N[0]), 'k--', linewidth=3, markersize=10, label='O(N)')
@@ -167,6 +179,9 @@ def plotting():
     plt.show()
 
 parser = argparse.ArgumentParser()
+# Exactly one mode is expected:
+# - benchmark mode: --log2h <value>
+# - plotting mode:  --plot
 parser.add_argument("--log2h", type=float, help="value of the space discretization parameter h", default=0)
 parser.add_argument("--plot", action="store_true", help="whether to plot the solution or not", default=False)
 
@@ -174,7 +189,7 @@ args, unknown = parser.parse_known_args()
 sys.argv = [sys.argv[0]] + unknown
 
 if (not(args.plot) and args.log2h == 0)  or (args.plot and args.log2h != 0):
-    print("Error, both  or none not possible. Exiting.")
+    print("Error: choose exactly one mode between --plot and --log2h. Exiting.")
     sys.exit(0)
 elif args.plot:
     plotting()

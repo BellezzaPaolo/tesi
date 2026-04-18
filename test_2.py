@@ -2,7 +2,7 @@ import firedrake as fd
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
-import utils
+import old.utils as utils
 from optimizer import Gradient_Descent
 # import time
 

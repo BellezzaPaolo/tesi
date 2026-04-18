@@ -1,3 +1,10 @@
+"""NGSolve-based gradient operators for stationary GPE minimization.
+
+This module mirrors the Firedrake workflow with:
+- a shared base class (`GradientsNG`),
+- `Gradient_L2` and `Gradient_az` step implementations.
+"""
+
 import ngsolve as ng
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +22,7 @@ class GradientsNG(abc.ABC):
         self.u = self.fes.TrialFunction()
         self.v = self.fes.TestFunction()
 
+        # Physical parameter and selected external potential.
         self.beta = beta
         if potential == 'Harmonic':
             self.potential = 0.5 * (ng.x**2 + ng.y**2)
@@ -35,6 +43,7 @@ class GradientsNG(abc.ABC):
         
         :param u (GridFunction): function to calculate the energy
         '''
+        # Return full energy and split terms for diagnostics.
         if u is not None:
             E_kin = 0.5 * ng.Integrate(ng.grad(u) * ng.grad(u), self.mesh)
             E_pot = ng.Integrate(self.potential * u**2, self.mesh)
@@ -66,6 +75,7 @@ class GradientsNG(abc.ABC):
         return ng.Integrate(self.uh**2, self.mesh)
     
     def assemble_problem(self, initial_guess, tau, E_ref):
+        # Allocate previous iterate and initialize chosen starting profile.
 
         self.uh_old = ng.GridFunction(self.fes, name="previous solution")
 
@@ -79,6 +89,7 @@ class GradientsNG(abc.ABC):
         else:
             ValueError('Initial guess not known')
         
+        # Enforce unit L2 norm from the beginning.
         norm = ng.Integrate(self.uh_old**2, self.mesh)
         self.uh_old.vec.data *= 1.0 / ng.sqrt(norm)
 
@@ -110,6 +121,7 @@ class GradientsNG(abc.ABC):
         t_start = time.time()
 
         for i in range(MaxIter):
+            # One gradient step followed by L2 normalization.
             self.step()
 
             norm = self.normalize()
@@ -118,6 +130,7 @@ class GradientsNG(abc.ABC):
 
             self.history_E.append(E_total)
 
+            # Relative energy error against reference value.
             error = abs(E_total - self.E_ref) / self.E_ref
 
             self.uh_old.vec.data = self.uh.vec
@@ -189,7 +202,7 @@ class Gradient_L2(GradientsNG):
     def step(self):
         density = self.uh_old**2
     
-        # Define bilinear form (left-hand side)
+        # Left-hand side: implicit L2 metric step with frozen density.
         # ∫[u · v + dt * ∇u·∇v + dt * V*u*v + dt * g|ψ|²*u*v] dx
         a = ng.BilinearForm(self.fes)
         a += self.u * self.v * ng.dx
@@ -198,7 +211,7 @@ class Gradient_L2(GradientsNG):
         a += self.tau * self.beta * density * self.u * self.v * ng.dx
         a.Assemble()
         
-        # Define linear form (right-hand side)
+        # Right-hand side from previous iterate.
         # ∫ ψ · v dx
         f = ng.LinearForm(self.fes)
         f += self.uh_old * self.v * ng.dx
@@ -211,26 +224,26 @@ class Gradient_az(GradientsNG):
     def assemble_problem(self, initial_guess, tau, E_ref):
         super().assemble_problem(initial_guess, tau, E_ref)
 
+        # Work buffer for the nonlinear Riesz projection.
         self.Ru = ng.GridFunction(self.fes, name="Riesz projection")
 
     def step(self):
         density = self.uh_old**2
     
-        # Define bilinear form (left-hand side)
-        # ∫[u · v + dt * ∇u·∇v + dt * V*u*v + dt * g|ψ|²*u*v] dx
+        # Nonlinear Riesz operator in the az metric.
         a = ng.BilinearForm(self.fes)
         a += 0.5 * ng.grad(self.u) * ng.grad(self.v) * ng.dx
         a += self.potential * self.u * self.v * ng.dx
         a += self.beta * density * self.u * self.v * ng.dx
         a.Assemble()
         
-        # Define linear form (right-hand side)
+        # Riesz right-hand side from current iterate.
         # ∫ ψ · v dx
         f = ng.LinearForm(self.fes)
         f += self.uh_old * self.v * ng.dx
         f.Assemble()
 
-        # compute Riesz projection
+        # Compute Riesz projection and update by convex combination.
         self.Ru.vec.data = a.mat.Inverse(self.fes.FreeDofs()) * f.vec
 
         int_R = ng.Integrate(self.Ru * self.uh_old,self.mesh)

@@ -1,7 +1,7 @@
 import firedrake as fd
 import numpy as np
 import matplotlib.pyplot as plt
-import utils
+import old.utils as utils
 
 xmin, ymin = -6., -6.
 xmax, ymax = 6., 6.

@@ -1,7 +1,25 @@
+"""2D toy demonstration of ParaFlowS versus standard gradient descent.
+
+This script applies ParaFlowS to a simple non-convex objective in R^2,
+tracks fine/correction iterations, and visualizes optimization trajectories.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 def Paraflow(f, g, x0, MaxIter, toll, lr, Nf, val):
+    """Run ParaFlowS updates on a 2D objective.
+
+    Args:
+        f: objective function.
+        g: gradient of f.
+        x0: initial point.
+        MaxIter: maximum number of outer iterations.
+        toll: stopping tolerance on objective gap.
+        lr: step size.
+        Nf: number of fine steps before correction.
+        val: reference minimum value used for error tracking.
+    """
     x = x0
     x_coarse = x0
 
@@ -14,8 +32,10 @@ def Paraflow(f, g, x0, MaxIter, toll, lr, Nf, val):
     history_f.append(f(x0))
     history_fine.append(True)
     for i in range(MaxIter):
+        # Coarse predictor at the beginning of each outer iteration.
         x_coarse = x_old - lr*Nf * g(x_old)
 
+        # Fine phase: Nf gradient steps with step size lr.
         for j in range(Nf):
             x_old = x_old - lr * g(x_old)
             history_points.append(x_old)
@@ -49,6 +69,7 @@ def Paraflow(f, g, x0, MaxIter, toll, lr, Nf, val):
             plt.grid(True, alpha=0.5, linestyle='-')
             plt.show()
 
+        # Correction phase: reuse last correction on top of fresh coarse updates.
         for k in range(10):
             x_coarse = x_old - lr * Nf * g(x_old)
 
@@ -85,6 +106,8 @@ def Paraflow(f, g, x0, MaxIter, toll, lr, Nf, val):
                 ax.legend(loc = 'upper right')
                 plt.grid(True, alpha=0.5, linestyle='-')
                 plt.show()
+
+            # Backtrack if correction does not improve the current error.
             if error > error_old:
                 x = x_old
                 break
@@ -115,12 +138,15 @@ def Paraflow(f, g, x0, MaxIter, toll, lr, Nf, val):
             ax.legend(loc = 'upper right')
             plt.grid(True, alpha=0.5, linestyle='-')
             plt.show()
+
+        # Stop when the objective gap is below tolerance.
         if error_old < toll:
             break
 
     return history_f, history_points, history_fine
 
 def GD(f, g, x0, MaxIter, toll, lr):
+    """Plain gradient descent baseline used for visual comparison."""
     x = x0
     history_f = []
     history_points_GD = []
@@ -137,18 +163,24 @@ def GD(f, g, x0, MaxIter, toll, lr):
     return history_f, history_points_GD
 
 
+# Test objective and gradient in R^2.
 f = lambda x: x[0]**4 + x[0] + x[1]**2
 g = lambda x: np.array([4*x[0]**3 + 1, 2*x[1]])
 
+# Initial condition and algorithm parameters.
 x0 = np.array([-1., 5.])
 lr = 0.05
 Nf = 6
 val = -3. / 4.**(4./3.)
 
 
+# Run ParaFlowS and GD trajectories.
 history_f, history_points, bool_fine = Paraflow(f = f, g = g, x0 = x0, MaxIter = 100, toll = 10**-4, lr = lr, Nf = Nf,val = val)
 history_f_gd, history_points_gd = GD(f = f, g = g, x0 = x0, MaxIter = 1000, toll = 10**-3, lr = lr)
 
+# Visualization:
+# - left: gradient field + trajectories,
+# - right: objective contours + trajectories.
 figure, ax = plt.subplots(  1,2, figsize = (12,5))
 # ax[0].plot(history_f, marker = 'o', label = 'ParaFlow')
 # ax[0].plot(history_f_gd, marker = 'x', label = 'Gradient Descent')

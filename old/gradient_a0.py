@@ -1,7 +1,7 @@
 import firedrake as fd
 import numpy as np
 import matplotlib.pyplot as plt
-import utils
+import old.utils as utils
 
 def compute_riesz(R_u,R_u2u, u, w, v, u_old, beta, bcs, param = None):
     a = 0.5 * fd.dot(fd.grad(u), fd.grad(w)) * fd.dx\

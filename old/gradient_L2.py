@@ -1,7 +1,7 @@
 import firedrake as fd
 import numpy as np
 import matplotlib.pyplot as plt
-import utils
+import old.utils as utils
 import time
 
 def assemble_forms(u, w, v, tau, u_old, beta):

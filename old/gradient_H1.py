@@ -1,7 +1,7 @@
 import firedrake as fd
 import numpy as np
 import matplotlib.pyplot as plt
-import utils
+import old.utils as utils
 
 def compute_grad(grad_E, u, w, u_old, v, beta, param = None):
     beta_c = fd.Constant(beta)

@@ -1,9 +1,17 @@
+"""Benchmark assembly and step costs for NGSolve gradient implementations.
+
+Use:
+- `--log2h <k>` to run one benchmark point,
+- `--plot` to visualize scaling from the aggregated CSV output.
+"""
+
 import csv
 import time
 import argparse
 import sys
 
 def compute_times(log2h):
+    # Convert log2-level to the mesh size convention used in this submodule.
     hmax = 2**(log2h+3)
     order = 1
     dirichlet_bcs = 'outer'
@@ -17,6 +25,7 @@ def compute_times(log2h):
     import ngsolve as ng
     from netgen.geom2d import SplineGeometry
 
+    # Build square domain and corresponding NGSolve mesh.
     geo = SplineGeometry()
     geo.AddRectangle(p1=(-6, -6), p2=(6, 6), bc="outer")
 
@@ -26,9 +35,11 @@ def compute_times(log2h):
     grad_L2 = Gradient_L2(beta, potential, hmax, mesh, order, dirichlet_bcs)
     grad_az = Gradient_az(beta, potential, hmax, mesh, order, dirichlet_bcs)
 
+    # Number of degrees of freedom for scaling plots.
     N = grad_az.fes.ndof
 
 
+    # L2 timing: warm-up assemble/step once, then measure assemble and one step.
     grad_L2.assemble_problem(initial_guess, tau, 0.0)
     t0 = time.perf_counter()
     grad_L2.assemble_problem(initial_guess, tau, 0.0)
@@ -45,7 +56,7 @@ def compute_times(log2h):
         writer = csv.writer(file)
         writer.writerow(['L2',hmax, N, time_assemble, time_step])
 
-    # az gradient
+    # az timing with the same protocol.
     grad_az.assemble_problem(initial_guess,tau, 0.0)
     t0 = time.time()
     grad_az.assemble_problem(initial_guess, tau, 0.0)
@@ -63,13 +74,15 @@ def compute_times(log2h):
         writer.writerow(['az',hmax, N, time_assemble, time_step])
 
 def plotting():
+    # Plot benchmark scaling from the CSV file.
     import matplotlib.pyplot as plt
     import pandas as pd
 
     df = pd.read_csv('../results/Budget_definition_NG.csv',
                      dtype={"name_opt": str, "h": float, "N": int, "time_assemble": float, "time_step": float, "time_step2": float, "time_step3": float})
 
-    discard_first_N = 0 # discard the first point to have better scaling visibility
+    # Optionally skip coarsest points if needed for readability.
+    discard_first_N = 0
 
     h = (df["h"].unique())[discard_first_N:]
     methods = df['name_opt'].unique()
@@ -122,6 +135,7 @@ def plotting():
     plt.show()
 
 parser = argparse.ArgumentParser()
+# Exactly one mode is expected: benchmarking OR plotting.
 parser.add_argument("--log2h", type=float, help="value of the space discretization parameter h", default=0)
 parser.add_argument("--plot", action="store_true", help="whether to plot the solution or not", default=False)
 
@@ -129,7 +143,7 @@ args, unknown = parser.parse_known_args()
 sys.argv = [sys.argv[0]] + unknown
 
 if (not(args.plot) and args.log2h == 0)  or (args.plot and args.log2h != 0):
-    print("Error, both  or none not possible. Exiting.")
+    print("Error: choose exactly one mode between --plot and --log2h. Exiting.")
     sys.exit(0)
 elif args.plot:
     plotting()

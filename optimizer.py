@@ -1,3 +1,11 @@
+"""Core optimization drivers for stationary GPE minimization.
+
+This module provides:
+- a generic optimizer interface,
+- a standard Sobolev-gradient descent driver,
+- the ParaflowS multiscale fine/coarse correction driver.
+"""
+
 import abc
 import firedrake as fd
 import matplotlib.pyplot as plt
@@ -88,6 +96,7 @@ class Optimizer(abc.ABC):
     def get_solver(self, grad_type):
         '''
         '''
+        # Dispatch gradient type string to the corresponding solver class.
 
         if grad_type in ['L2', 'l2', 'L_2']:
             return gradient_L2(self.W, self.bcs, self.h, self.beta, self.v)
@@ -121,6 +130,7 @@ class Optimizer(abc.ABC):
         :param u_ref (fd.Function): reference solution
         '''
 
+        # Keep a normalized iterate to enforce the unit-mass constraint.
         self.u_old = fd.Function(self.W)
 
         norm = fd.norm(u0,'L2')
@@ -161,6 +171,7 @@ class Gradient_Descent(Optimizer):
 
         super().compile(u0, E_ref)
 
+        # Build the selected Sobolev gradient operator and pre-assemble forms.
         self.solver = self.get_solver(grad_type)
         
         self.solver.assemble_problem(tau)
@@ -181,7 +192,7 @@ class Gradient_Descent(Optimizer):
         t_start = time.time()
 
         for i in range(MaxIter):
-            # compute new soltution
+            # Compute one gradient step and re-normalize.
             self.solver.step(self.u_old)
 
             # normalize
@@ -194,7 +205,7 @@ class Gradient_Descent(Optimizer):
 
             self.history_E.append(self.E)
 
-            # calculate the error
+            # Relative error with respect to reference ground-state energy.
             error = abs(self.E - self.E_ref) / self.E_ref
 
             self.u_old.assign(self.solver.uh)
@@ -313,10 +324,12 @@ class ParaflowS(Optimizer):
 
         super().compile(u0, E_ref)
 
+        # Coarse solver: cheap correction dynamics.
         self.coarse_solver = self.get_solver(grad_type_coarse)
         self.coarse_solver.assemble_problem(tau_g)
         self.Ng = Ng
 
+        # Fine solver: accurate local evolution.
         self.fine_solver = self.get_solver(grad_type_fine)
         self.fine_solver.assemble_problem(tau_f)
         self.Nf = Nf
@@ -350,13 +363,14 @@ class ParaflowS(Optimizer):
             if verbose:
                 print(f'Entry error: {abs(energy_old - self.E_ref) / self.E_ref} ')
 
+            # Initial coarse prediction from current iterate.
             self.coarse_solver.step(self.u_old)
             N_iter_coarse +=1
 
             self.fine_solver.uh.assign(self.u_old)
             alpha = 0.0
             for _ in range(self.Nf):
-                # normalize
+                # Fine phase: evolve Nf times with normalization at each step.
                 self.fine_solver.uh.assign(self.fine_solver.uh / fd.norm(self.fine_solver.uh,'L2'))
 
                 self.fine_solver.step(self.fine_solver.uh)
@@ -371,12 +385,15 @@ class ParaflowS(Optimizer):
                 energy_old = energy_new
                 N_iter_fine += 1 
 
+            # Correction direction = fine prediction - coarse prediction.
             self.correction_uh.assign(self.fine_solver.uh - self.coarse_solver.uh) # not necessary, could be done also self.fine_solver.uh.assign(self.fine_solver.uh - self.coarse_solver.uh)
             alpha /= self.Nf
+            # Safety factor for the acceptance test in the coarse correction loop.
             alpha = min(1.0, alpha + 0.01)
             # print(f'Alpha value: {alpha}')
             for j in range(self.Ng):
 
+                # Apply correction on top of current coarse state.
                 self.uh.assign(self.coarse_solver.uh + self.correction_uh)
 
                 # normalize
@@ -393,11 +410,13 @@ class ParaflowS(Optimizer):
 
 
                 # if self.E > energy_old and j >= 1: 
+                # Reject correction if energy grows too much.
                 if self.E > alpha * energy_old and j >= 1:
                     if verbose:
                         print('     Exiting energy grow up')
                     self.uh.assign(self.u_old)
                     break
+                # Accept and terminate if target tolerance is reached.
                 if error < toll:
                     if verbose:
                         print('     Exiting because the error is small enough')
@@ -406,6 +425,7 @@ class ParaflowS(Optimizer):
                 energy_old = self.E
                 self.u_old.assign(self.uh)
                 
+                # Advance coarse dynamics after accepted correction.
                 self.coarse_solver.step(self.u_old)
                 N_iter_coarse +=1
 

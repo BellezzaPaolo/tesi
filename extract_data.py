@@ -1,3 +1,9 @@
+"""Extract and visualize ParaflowS iteration data from CSV outputs.
+
+The script loads PF result files, keeps the columns relevant to step-size
+analysis, writes a merged table, and generates tau_fine/tau_coarse contour maps.
+"""
+
 import pandas as pd
 import os
 from pathlib import Path
@@ -58,7 +64,7 @@ def process_all_csv_files(base_directory='.'):
     """
     all_data = []
     
-    # Find all CSV files in subdirectories
+    # Find PF result files in selected folders.
     folcers_to_search = ['graphs'] # Add more folder names if needed
     base_path = Path(base_directory)
     csv_files = []
@@ -89,7 +95,7 @@ def plot_iterations_data(combined_data):
     combined_data : pd.DataFrame
         Combined DataFrame with extracted data
     """
-    # Convert numeric columns to proper types and drop any non-numeric rows
+    # Convert relevant columns to numeric and drop invalid rows.
     numeric_cols = ['tau_fine', 'tau_coarse', 'iterate_coarse', 'iterate_fine']
     for col in numeric_cols:
         if col in combined_data.columns:
@@ -102,7 +108,7 @@ def plot_iterations_data(combined_data):
         print("No valid numeric data to plot")
         return
     
-    # Extract unique values for fine and coarse operators
+    # Iterate per operator pair and per (N_fine, N_coarse) block.
     fine_operators = combined_data['fine_operator'].unique()
     coarse_operators = combined_data['coarse_operator'].unique()
 
@@ -115,7 +121,9 @@ def plot_iterations_data(combined_data):
     # vmax = combined_data['total_iterations'].max()
     # print(f"Colorbar range: {vmin} to {vmax} iterations")
 
+    # Values above MAX are clipped to keep color scaling readable.
     MAX = 100
+    # GD thresholds used to highlight competitive regions.
     GD ={'L2_P': 24, 'az': 24}
 
     for fine_op in fine_operators:
@@ -132,7 +140,7 @@ def plot_iterations_data(combined_data):
                     if len(subset) > 0:
                         fig = plt.figure(figsize=(10, 6))
                         
-                        # Prepare data for interpolation
+                        # Prepare samples: x=tau_fine, y=tau_coarse, z=total calls.
                         tau_fine_data = subset['tau_fine']
                         tau_coarse_data = subset['tau_coarse']
                         iterations_data = (subset['iterate_fine'] + subset['iterate_coarse']).values
@@ -162,12 +170,12 @@ def plot_iterations_data(combined_data):
                         tau_fine_min, tau_fine_max = tau_fine_data.min(), tau_fine_data.max()
                         tau_coarse_min, tau_coarse_max = tau_coarse_data.min(), tau_coarse_data.max()
                         
-                        # Create fine grid in log space for better interpolation
+                        # Build a dense log-log grid for smooth contour rendering.
                         tau_fine_interp = np.logspace(np.log10(tau_fine_min), np.log10(tau_fine_max), 200)
                         tau_coarse_interp = np.logspace(np.log10(tau_coarse_min), np.log10(tau_coarse_max), 200)
                         tau_fine_grid, tau_coarse_grid = np.meshgrid(tau_fine_interp, tau_coarse_interp)
                         
-                        # Interpolate data using griddata for smooth contours
+                        # Interpolate sparse samples to dense grid.
                         points = np.column_stack((tau_fine_data.values, tau_coarse_data.values))
                         iterate_grid = griddata(points, capped_iterations, 
                                               (tau_fine_grid, tau_coarse_grid),
@@ -180,7 +188,7 @@ def plot_iterations_data(combined_data):
                         contour = plt.contourf(tau_fine_grid, tau_coarse_grid, iterate_grid, levels=200, cmap='viridis',
                                 vmin=capped_iterations.min(), vmax=MAX)
                         
-                        # Add contour line at threshold value (25)
+                        # Add threshold contour to show promising regions.
                         threshold = GD[fine_op]
                         contour_line = plt.contour(tau_fine_grid, tau_coarse_grid, iterate_grid, 
                                                   levels=[threshold], colors='red', linewidths=2, linestyles='--')
@@ -193,8 +201,7 @@ def plot_iterations_data(combined_data):
                         plt.yscale('log')
                         plt.colorbar(contour, label='Total Iterations')
                         
-                        # Scatter plot overlay showing actual data points
-                        # Highlight points below threshold with red edge
+                        # Overlay measured points on top of interpolated contours.
                         below_threshold = capped_iterations < threshold
 
                         scatter = plt.scatter(subset['tau_fine'], subset['tau_coarse'], 
@@ -202,13 +209,13 @@ def plot_iterations_data(combined_data):
                                     cmap='viridis', s=100, alpha=0.7, edgecolors='black', linewidth=0.5,
                                     vmin=capped_iterations.min(), vmax=MAX)
                         
-                        # Highlight points below threshold with red circles
+                        # Emphasize points below threshold.
                         if np.any(below_threshold):
                             plt.scatter(subset['tau_fine'][below_threshold], subset['tau_coarse'][below_threshold],
                                       s=120, facecolors='none', edgecolors='red', linewidth=1, 
                                       label=f'< {threshold} iterations')
                         
-                        # Add text annotations only for points below 1.1 * threshold
+                        # Annotate only relatively good points to avoid clutter.
                         annotation_threshold = 1.5 * threshold
                         for idx in subset.index:
                             iteration_val = int(capped_iterations[subset.index.get_loc(idx)])
@@ -224,7 +231,7 @@ def plot_iterations_data(combined_data):
                                            fontsize=9, color='red', fontweight='bold',
                                            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.7, edgecolor='red'))
                         
-                        # Highlight the minimum point
+                        # Optional explicit minimum marker (currently disabled).
                         # min_idx = subset.index[capped_iterations.argmin()]
                         # min_tau_fine = subset.loc[min_idx, 'tau_fine']
                         # min_tau_coarse = subset.loc[min_idx, 'tau_coarse']
@@ -251,6 +258,7 @@ def plot_iterations_data(combined_data):
                         
                         #plt.show()
 
+                        # Store plots in the output folder used by this analysis.
                         os.makedirs('./graphs_alpha_min', exist_ok=True)
                         output_file = f'./graphs_alpha_min/iterations_{fine_op}_{n_fin}_{n_coars}.png'
                         plt.savefig(output_file)
@@ -263,11 +271,11 @@ def plot_iterations_data(combined_data):
 def main():
     """Main function to process CSV files and save results."""
     
-    # Process all CSV files in subdirectories
+    # Load and concatenate selected PF CSV sources.
     combined_data = process_all_csv_files()
     
     if combined_data is not None:
-        # Save to a new CSV file
+        # Save merged dataset for traceability/reuse.
         output_file = 'extracted_iterations_data.csv'
         combined_data.to_csv(output_file, index=False)
         # print(f"\nData saved to {output_file}")
@@ -277,7 +285,7 @@ def main():
         # print(f"\nSummary statistics:")
         # print(combined_data.describe())
         
-        # Create plots
+        # Generate contour/scatter diagnostics.
         plot_iterations_data(combined_data)
     else:
         print("No data extracted.")
