@@ -11,9 +11,9 @@ from pot_3 import RandomDisorderPotential
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from optimizer import Gradient_Descent, ParaflowS
 
-is_save_CSV = True
+is_save_CSV = False
 is_save_log = False
-is_save_plot = False
+is_save_plot = True
 
 folder = Path('~/Desktop/tesi/tesi/test').expanduser()
 
@@ -21,15 +21,15 @@ nx = 256
 # beta_v = [1000]#,100,1000]
 MaxIter = 1000
 toll = 1e-5
-test = '3' # '1', '2' or '3'
+test = '1' # '1', '2' or '3'
 
 methods_coarse = ['L2_P']# ['L2_P', 'az']
-methods_fine = ['L2_P', 'az']
+methods_fine = ['az']# ['L2_P', 'az']
 Nf_v = [4]#[2, 3, 4, 5, 6]#, 10]
 Ng_v = [10]#, 20]#, 100]
 
 if test == '1':
-    tau_v ={'az': [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1], 'L2_P': [0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
+    tau_v ={'az':[0.1]}#{'az': [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1], 'L2_P': [0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100], 'az_ada': [1]} #L2_P
     # tau_v = [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1]#az#1, 0.5, 0.25, 0.1, 0.05, 0.025] #[1, 0.5]
     #tau_v = [1.2,1.3,1.5,1.7,1.9]#az
     E_ref = {10: 0.79620688, 100: 1.97298868, 1000: 5.99303235}
@@ -40,9 +40,9 @@ if test == '1':
     filename_results_GD = str(case_folder / 'GD.csv')
     # filename_results_GD = str(case_folder / 'GD_conv.csv')
     # filename_results_PF = str(case_folder / 'PFm_dt.csv')
-    filename_results_PF = str(case_folder / 'PFalpha_dt.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_ada.csv')
 elif test == '2':
-    tau_v = {'az':list(np.linspace(0.05, 1.7,19)), 'L2_P':[0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
+    tau_v = {'az':list(np.linspace(0.05, 1.7,19)), 'L2_P':[0.005, 0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100], 'az_ada': [1]} #L2_P
 
     beta = 1000
     # tau_v = list(np.linspace(0.05, 1.7,19)) #az
@@ -51,9 +51,9 @@ elif test == '2':
     case_folder = folder / 'case_test2'
     case_folder.mkdir(parents=True, exist_ok=True)
     filename_results_GD = str(case_folder / 'GD.csv')
-    filename_results_PF = str(case_folder / 'PFalpha_dtxNf.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_ada.csv')
 elif test == '3':
-    tau_v = {'az':list(np.linspace(0.5, 2.0, 15)), 'L2_P': [0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100]} #L2_P
+    tau_v = {'az':list(np.linspace(0.5, 2.0, 15)), 'L2_P': [0.01, 0.05, 0.1, 0.5, 0.8, 1, 1.5, 2, 5, 8, 10, 15, 20, 30, 40, 50, 70, 100], 'az_ada': [1]} #L2_P
     # [0.05,0.1]
     beta = 10
     # tau_v = list(np.linspace(0.5, 2.0, 15)) #az
@@ -61,8 +61,8 @@ elif test == '3':
 
     case_folder = folder / 'case_test3'
     case_folder.mkdir(parents=True, exist_ok=True)
-    # filename_results_GD = str(case_folder / 'GD.csv')
-    filename_results_PF = str(case_folder / 'PFalpha_dt.csv')
+    filename_results_GD = str(case_folder / 'GD.csv')
+    filename_results_PF = str(case_folder / 'PFalpha_ada.csv')
 else:
     NameError('test must be 1, 2 or 3')
 
@@ -159,7 +159,7 @@ for name_fine in methods_fine:
 
     # if not(done):
         for tau in tqdm(tau_v[name_fine]):
-            # optim_GD.compile(u0, tau, E_ref[beta],grad_type = name_fine)
+            # optim_GD.compile(u0, E_ref[beta],grad_type = name_fine, tau = tau)
 
             # filename = 'GD'+ name_fine + '_tau' + str(tau)
             # if is_save_log:
@@ -180,7 +180,7 @@ for name_fine in methods_fine:
             for Nf in Nf_v:
                 for Ng in Ng_v:
 
-                    optim.compile(u0, tau, tau, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng)
+                    optim.compile(u0, E_ref[beta],grad_type_coarse=name_coarse, grad_type_fine = name_fine, Nf = Nf, Ng = Ng, tau_f = tau, tau_g = tau * Nf)
 
                     filename = 'PF'+ name_fine + '_' + name_coarse + '_tau' + str(tau) + '_Nf'+ str(Nf)+ '_Ng' + str(Ng)
                     if is_save_log:
@@ -188,7 +188,7 @@ for name_fine in methods_fine:
                         sys.stdout = f
                     res = optim.minimize(100, toll, is_save_log)
                     if is_save_plot:
-                        optim.plot_history(filesave = str(folder / (filename + '.png')))
+                        optim.plot_history(filesave = str(folder / (filename + '_old.png')))
                     if is_save_CSV:
                         optim.save_data(filename_results_PF, res)
                     if is_save_log:

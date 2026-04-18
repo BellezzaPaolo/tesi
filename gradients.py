@@ -407,11 +407,11 @@ class gradient_az_ada(gradient):
         intR = fd.assemble(self.R_u * u_old * fd.dx)
         
         alpha0 = fd.assemble(0.5 * fd.inner(fd.grad(u_old), fd.grad(u_old)) * fd.dx \
-                             + self.v * u_old * u_old * fd.dx)
+                            + self.v * u_old * u_old * fd.dx)
         alpha1 = 2 / intR * fd.assemble(0.5 * fd.inner(fd.grad(self.R_u), fd.grad(u_old)) * fd.dx \
-                             + self.v * self.R_u * u_old * fd.dx)
+                            + self.v * self.R_u * u_old * fd.dx)
         alpha2 = 1/intR**2 * fd.assemble(0.5 * fd.inner(fd.grad(self.R_u), fd.grad(self.R_u)) * fd.dx \
-                             + self.v * self.R_u * self.R_u * fd.dx)
+                            + self.v * self.R_u * self.R_u * fd.dx)
         beta0 = fd.assemble(self.beta * 0.5 * (u_old)**4 * fd.dx) 
         beta1 = fd.assemble(self.beta * 2 * (u_old)**3 * self.R_u /intR * fd.dx)
         beta2 = fd.assemble(self.beta * 3 * (u_old)**2 * self.R_u**2 /intR**2 * fd.dx)
@@ -421,9 +421,20 @@ class gradient_az_ada(gradient):
         gamma1 = fd.assemble(2 * u_old * self.R_u /intR * fd.dx)
         gamma2 = fd.assemble(self.R_u**2 /intR**2 * fd.dx)
 
-        den = lambda x: ((1- x)**2 * gamma0 + (1-x)* x * gamma1 + x**2 * gamma2)**0.5
-        f  = lambda x: alpha0 / den(x)**2 * (1-x)**2 + alpha1 / den(x)**2 * (1-x)*x + alpha2 / den(x)**2 * x**2 \
-            + beta0 / den(x)**4 * (1-x)**4 + beta1 / den(x)**4 * (1-x)**3 * x + beta2 / den(x)**4 * (1-x)**2 * x**2 + beta3 / den(x)**4 * (1-x) * x**3 + beta4 / den(x)**4 * x**4
+        def den(x):
+            return ((1- x)**2 * gamma0 + (1-x)* x * gamma1 + x**2 * gamma2)**0.5
+
+        def f(x):
+            d2 = den(x)**2
+            d4 = den(x)**4
+            return (alpha0 / d2 * (1-x)**2
+                    + alpha1 / d2 * (1-x)*x
+                    + alpha2 / d2 * x**2
+                    + beta0 / d4 * (1-x)**4 
+                    + beta1 / d4 * (1-x)**3 * x 
+                    + beta2 / d4 * (1-x)**2 * x**2 
+                    + beta3 / d4 * (1-x) * x**3 
+                    + beta4 / d4 * x**4)
 
         self.tau = fd.Constant(self.golden_search(f))
 

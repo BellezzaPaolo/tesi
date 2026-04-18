@@ -47,45 +47,45 @@ for h in h_v:
     E_ref = 15.204825
     optim_GD = Gradient_Descent(beta,v,W, bcs, h)
 
-    # # L2 gradient
-    # for tau in tau_L2:
-    #     optim_GD.compile(u0, tau, E_ref, grad_type = 'L2')
+    # L2 gradient
+    for tau in tau_L2:
+        optim_GD.compile(u0, E_ref, grad_type = 'L2', tau = tau)
 
-    #     res = optim_GD.minimize(MaxIter, toll, False)
-    #     Iter_L2.append(res["iterate"])
+        res = optim_GD.minimize(MaxIter, toll, False)
+        Iter_L2.append(res["iterate"])
 
-    #     # optim_GD.save_data(filename_results, res)
+        # optim_GD.save_data(filename_results, res)
 
-    #     # optim_GD.plot_history(show = True)
+        # optim_GD.plot_history(show = True)
 
-    #     if res["converged"]:
-    #         print()
-    #         print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
-    #         print()
-    #     else:
-    #         print()
-    #         print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
-    #         print()
+        if res["converged"]:
+            print()
+            print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            print()
+        else:
+            print()
+            print(f'L2 minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+            print()
         
-    # # a_z gradient
-    # for tau in tau_az:
-    #     optim_GD.compile(u0, tau, E_ref, grad_type = 'az')
+    # a_z gradient
+    for tau in tau_az:
+        optim_GD.compile(u0, E_ref, grad_type = 'az', tau = tau)
 
-    #     res = optim_GD.minimize(MaxIter, toll, False)
-    #     Iter_az.append(res["iterate"])
+        res = optim_GD.minimize(MaxIter, toll, False)
+        Iter_az.append(res["iterate"])
 
-    #     # optim_GD.save_data(filename_results, res)
+        # optim_GD.save_data(filename_results, res)
 
-    #     # optim_GD.plot_history(show = True)
+        # optim_GD.plot_history(show = True)
 
-    #     if res["converged"]:
-    #         print()
-    #         print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
-    #         print()
-    #     else:
-    #         print()
-    #         print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
-    #         print()
+        if res["converged"]:
+            print()
+            print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} converged to energy: {res["energy"]} with lambda: {res["lam"]} at the iterate: {res["iterate"]}')
+            print()
+        else:
+            print()
+            print(f'a_z minization with h: {h}, beta: {beta}, tau:{tau} did NOT converged in iterate: {res["iterate"]}')
+            print()
 
     # az_ada gradient
     optim_GD.compile(u0, E_ref, grad_type = 'az_ada')

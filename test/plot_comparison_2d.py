@@ -1,9 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+import numpy as np
 
 # Configuration
-case_folder = Path(__file__).parent / 'case_test2'
+case_folder = Path(__file__).parent / 'case_test3'
 
 # Extract test case number from folder name
 test_case_num = case_folder.name.replace('case_test', '')
@@ -23,6 +24,7 @@ print(f"Unique N_fine values: {N_fine}")
 N_coarse = df_pf_dtxNf['N_coarse'].unique()
 opt = df_pf_dtxNf['fine_operator'].unique()
 
+df_gd_ada = df_gd[df_gd['optimizer_name'] == 'az_ada']
 
 color = {'L2_P': '#1f77b4', 'az': '#ff7f0e'}  # Blue for L2_P, Orange for az
 
@@ -81,6 +83,13 @@ for nf in N_fine:
                 ax.plot(subset_dtxNf_2['tau_fine'].values, it,
                     marker='d', linewidth=3, markersize=10, linestyle='--', color = '#d62728',
                     label=label)
+                df_pf_ada = pd.read_csv(case_folder / 'PFalpha_ada.csv')
+                ax.plot(subset_dtxNf_2['tau_fine'].values,
+                        (df_pf_ada['iterate_fine'] + df_pf_ada['iterate_coarse']).values.copy() * np.ones(subset_dtxNf_2['tau_fine'].values.shape),
+                        label = fr'$a_u$-PF: adaptive $\tau_F$')
+                ax.plot(subset_dtxNf_2['tau_fine'].values,
+                        df_gd_ada['iterate'].values.copy() * np.ones(subset_dtxNf_2['tau_fine'].values.shape),
+                        label = fr'$a_u$: adaptive $\tau_F$')
 
             else:
                 it = (subset_dtxNf_2x3['iterate_fine'] + subset_dtxNf_2x3['iterate_coarse']).values.copy()
@@ -156,9 +165,9 @@ for nf in N_fine:
             ax.tick_params(axis='both', which='minor', labelsize=30)
 
             plt.tight_layout()
-        # plt.show()
+        plt.show()
         # exit()
-        plt.savefig(case_folder / f'plot_{test_case_num}_comp_Nf{nf}_Nc{nc}.png', dpi=300)
-        plt.close()
+        # plt.savefig(case_folder / f'plot_{test_case_num}_comp_Nf{nf}_Nc{nc}.png', dpi=300)
+        # plt.close()
 
 print("Done!")

@@ -48,7 +48,7 @@ for h in h_v:
         #for tau in tau_v[21:]:
         for name in methods:
 
-            optim_GD.compile(u0, E_ref[beta], grad_type = name)
+            optim_GD.compile(u0, E_ref[beta], grad_type = name) #, tau = tau)
 
             res = optim_GD.minimize(MaxIter, toll,verbose = False)
 

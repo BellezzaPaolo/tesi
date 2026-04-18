@@ -296,7 +296,7 @@ class ParaflowS(Optimizer):
         '''
         super().__init__('ParaflowS',beta, v, W, bcs, h)
 
-    def compile(self, u0, tau_f, tau_g, E_ref, grad_type_coarse, grad_type_fine, Nf, Ng = 100):
+    def compile(self, u0, E_ref, grad_type_coarse, grad_type_fine, Nf, Ng = 100, tau_f = None, tau_g = None):
         '''
         Docstring for compile
         
@@ -455,38 +455,38 @@ class ParaflowS(Optimizer):
         :param method_name (string): name of the gradient method used
         '''
 
-        fig, ax = plt.subplots(2,1, figsize=(5,10))
+        fig, ax = plt.subplots(1,1, figsize=(10,10))
         fig.suptitle(f'{self.name_optimizer} with fine:{self.fine_solver.name} and coarse: {self.coarse_solver.name},\n h={self.h}, beta={float(self.beta)}, tau_f={float(self.fine_solver.tau)}, tau_c={float(self.coarse_solver.tau)}')
 
         offset = 0
         for element in self.history_E:
             if offset == 0:
                 times = np.array(range(0,self.Nf)) * float(self.fine_solver.tau) + offset
-                ax[0].semilogy(times, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf)], marker='o', c = 'orange', label = 'Fine solver')
-                ax[1].semilogy(times, [element[i] for i in range(self.Nf)], marker='o', c = 'orange', label = 'Fine solver')
+                ax.semilogy(times, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf)], marker='o', linewidth = 5, markersize = 10, c = '#e67e22', label = 'Fine solver')
+                #ax[1].semilogy(times, [element[i] for i in range(self.Nf)], marker='o', c = '#e67e22', label = 'Fine solver')
                 offset += (self.Nf - 1) * float(self.fine_solver.tau)
-                ax[0].semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf, len(element))], marker='x', c = 'blue', label = 'Correction')
-                ax[1].semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [element[i] for i in range(self.Nf, len(element))], marker='x', c = 'blue', label = 'Correction')
+                ax.semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf, len(element))], marker='o', linewidth = 5, markersize = 10, c = '#2c3e50', label = 'Correction')
+                #ax[1].semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [element[i] for i in range(self.Nf, len(element))], marker='x', c = '#2c3e50', label = 'Correction')
                 offset += (len(element) - self.Nf - 1) * float(self.coarse_solver.tau) + float(self.fine_solver.tau)
             else:
                 times = np.array(range(0,self.Nf)) * float(self.fine_solver.tau) + offset
-                ax[0].semilogy(times, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf)], marker='o', c = 'orange')
-                ax[1].semilogy(times, [element[i] for i in range(self.Nf)], marker='o', c = 'orange')
+                ax.semilogy(times, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf)], marker='o', linewidth = 5, markersize = 10, c = '#e67e22')
+                #ax[1].semilogy(times, [element[i] for i in range(self.Nf)], marker='o', c = '#e67e22')
                 offset += (self.Nf - 1) * float(self.fine_solver.tau)
-                ax[0].semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf, len(element))], marker='x', c = 'blue')
-                ax[1].semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [element[i] for i in range(self.Nf, len(element))], marker='x', c = 'blue')
+                ax.semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [abs(element[i] - self.E_ref) / self.E_ref for i in range(self.Nf, len(element))], marker='o', linewidth = 5, markersize = 10, c = '#2c3e50')
+                #ax[1].semilogy(np.array(range(0,len(element) - self.Nf )) * float(self.coarse_solver.tau) + offset, [element[i] for i in range(self.Nf, len(element))], marker='x', c = '#2c3e50')
                 offset += (len(element) - self.Nf - 1) * float(self.coarse_solver.tau) + float(self.fine_solver.tau)
-        ax[0].set_xlabel('Iteration')
-        ax[0].set_ylabel('Relative Error on Energy')
-        ax[0].set_title('Convergence History')
-        ax[0].grid(True)
-        ax[0].legend()
+        ax.set_xlabel('Iteration', fontsize = 30)
+        ax.set_ylabel('Relative Error on Energy', fontsize = 30)
+        ax.set_title('Convergence History', fontsize = 30)
+        ax.grid(True)
+        ax.legend()
 
-        ax[1].set_xlabel('Iteration')
-        ax[1].set_ylabel('Energy')
-        ax[1].set_title('Energy History')
-        ax[1].grid(True)
-        ax[1].legend()
+        # ax[1].set_xlabel('Iteration')
+        # ax[1].set_ylabel('Energy')
+        # ax[1].set_title('Energy History')
+        # ax[1].grid(True)
+        # ax[1].legend()
 
         if show:
             plt.show()

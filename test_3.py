@@ -99,7 +99,7 @@ optim_GD = Gradient_Descent(beta,v,W, bcs, h)
 
 # L2 gradient
 for tau in tau_v['L2_P']:
-    optim_GD.compile(u0, tau, E_ref[beta], grad_type = 'L2')
+    optim_GD.compile(u0, E_ref[beta], grad_type = 'L2', tau = tau)
 
     res = optim_GD.minimize(MaxIter, toll, False)
 
@@ -118,7 +118,7 @@ for tau in tau_v['L2_P']:
     
 # a_z gradient
 for tau in tau_v['az']:
-    optim_GD.compile(u0, tau, E_ref[beta], grad_type = 'az')
+    optim_GD.compile(u0, E_ref[beta], grad_type = 'az', tau = tau)
 
     res = optim_GD.minimize(MaxIter, toll, False)
 
