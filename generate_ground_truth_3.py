@@ -3,8 +3,10 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 import utils
-from pot_3 import RandomDisorderPotential
+from test.pot_3 import RandomDisorderPotential
 # import time
+from matplotlib.colors import LinearSegmentedColormap
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 # reproducibility
 rng = np.random.default_rng(21)
@@ -111,12 +113,37 @@ print("epsilon:", epsilon, "h (PDE):", h)
 # Plot the potential
 v_func = fd.Function(W)
 v_func.interpolate(v)
-fig, ax = plt.subplots()
-col = fd.tripcolor(v_func, axes=ax, cmap='coolwarm')
-plt.colorbar(col)
-ax.axis('equal')
-ax.axis('off')
-# plt.title(r'Potential with Anderson Localization')
+
+div_theme = LinearSegmentedColormap.from_list(
+    "div_theme",
+    [
+        "#2c3e50",  # dark blue
+        "#4a90e2",  # light blue
+        "#ffffff",  # center (zero)
+        "#f5b041",  # light orange
+        "#e67e22"   # strong accent
+    ]
+)
+v_func = fd.Function(W)
+v_func.interpolate(v)
+fig, ax = plt.subplots(1,1, figsize=(10,10))
+col = fd.tripcolor(v_func, axes=ax, cmap=div_theme)
+ax.set_aspect('equal', adjustable='box')
+ax.set_xlim(xmin, xmax)
+ax.set_ylim(ymin, ymax)
+ax.margins(0)
+ax.set_xticks([])
+ax.set_yticks([])
+cax = inset_axes(
+    ax,
+    width="100%",   # exact same width as plotting axis
+    height="4%",
+    loc="lower left",
+    bbox_to_anchor=(0.0, -0.08, 1.0, 1.0),
+    bbox_transform=ax.transAxes,
+    borderpad=0,
+)
+fig.colorbar(col, cax=cax, orientation='horizontal')
 plt.show()
 
 bcs = [ fd.DirichletBC(W, fd.Constant(0.0), (1,2,3,4)) ]

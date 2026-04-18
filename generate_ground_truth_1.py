@@ -2,6 +2,8 @@ import firedrake as fd
 import numpy as np
 import matplotlib.pyplot as plt
 import utils
+from matplotlib.colors import LinearSegmentedColormap
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 def assemble_forms(u, w, v, tau, u_old, beta):
     # ensure numeric parameters are UFL Constants to avoid premature python-side
@@ -60,11 +62,36 @@ for h in h_v:
     # Plot the potential
     v_func = fd.Function(W)
     v_func.interpolate(v)
-    fig, ax = plt.subplots()
-    col = fd.tripcolor(v_func, axes=ax, cmap='coolwarm')
-    plt.colorbar(col)
-    ax.axis('equal')
-    plt.title(r'Potential: $V(x,y) = \frac{1}{2}(x^2 + y^2)$')
+    div_theme = LinearSegmentedColormap.from_list(
+        "div_theme",
+        [
+            "#2c3e50",  # dark blue
+            "#4a90e2",  # light blue
+            "#ffffff",  # center (zero)
+            "#f5b041",  # light orange
+            "#e67e22"   # strong accent
+        ]
+    )
+    fig, ax = plt.subplots(1,1, figsize=(10,10))
+    col = fd.tripcolor(v_func, axes=ax, cmap=div_theme)
+    ax.set_aspect('equal', adjustable='box')
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+    ax.margins(0)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    cax = inset_axes(
+        ax,
+        width="100%",   # exact same width as plotting axis
+        height="4%",
+        loc="lower left",
+        bbox_to_anchor=(0.0, -0.08, 1.0, 1.0),
+        bbox_transform=ax.transAxes,
+        borderpad=0,
+    )
+    fig.colorbar(col, cax=cax, orientation='horizontal')
+    # ax.axis('off')
+    # plt.title(r'Potential: $V(x,y) = \frac{1}{2}(x^2 + y^2)$')
     plt.show()
 
     # a, rhs = assemble_forms(u, w, v, tau[0], u_old, beta[0])
