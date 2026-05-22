@@ -112,7 +112,7 @@ These numbers make more evident that the adaptivity does not require an importan
  
  Notes
  -----
- - `compute_budget.py` and `plot_budget.py` writes its output to `test_budget/result.csv`, `test_budget/time_assemble.png`, `test_budget/time_step.png` and `test_budget/budget_table.md` by default — check the script for command-line options.
+ - `compute_budget.py` and `plot_budget.py` writes its output to `test_budget/result.csv`, `test_budget/images/time_assemble.png`, `test_budget/images/time_step.png` and `test_budget/budget_table.md` by default — check the script for command-line options.
  - The plot discards by defaults the 2 coarsest meshes because too coarse in this settings, change as preferred: line 11 of `plot_budget.py`.
  
  Contact

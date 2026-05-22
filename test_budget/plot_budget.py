@@ -118,7 +118,7 @@ ax[1].legend()
 ax[1].grid()
 
 # Save the figure for the assemble time plots.
-fig.savefig(output_dir / 'time_assemble.png', dpi=300, bbox_inches='tight')
+fig.savefig(output_dir / 'images/time_assemble.png', dpi=300, bbox_inches='tight')
 
 
 
@@ -154,6 +154,6 @@ ax[1].tick_params()#axis='both', which='major', labelsize=25)
 ax[1].grid()
 
 # Save the figure for the time step plots.
-fig.savefig(output_dir / 'time_step.png', dpi=300, bbox_inches='tight')
+fig.savefig(output_dir / 'images/time_step.png', dpi=300, bbox_inches='tight')
 
 plt.show()
