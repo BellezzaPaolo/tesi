@@ -51,14 +51,14 @@
 
  This figure reports the time used to precompute and allocate all the quantities used in the iteration process. 
 
-![assmeble plot](time_assemble.png)
+![assmeble plot](images/time_assemble.png)
 
 The $L^2$ explicit, $H^1$ explicit and $a_0$ explicit Normalized Sobolev Gradient reuse the same matrix at every iteration so it's factorized at the beginning. 
 All other method allocate only small quantities used in the computation like the time step so the different number of refinement does not affects the computational time.
 
 The second figure shows the computational time with respect to the number of refinements.
 
-![step plot](time_step.png)
+![step plot](images/time_step.png)
 
 The three methods that have already factorized the matrix require less time even if they solve more linear system per iteration. While all other methods solve one linear system per iteration so require the same computational time. The time used by the adaptivity is dominated by the time for the linear system so in this graph cannot be seen.
 
