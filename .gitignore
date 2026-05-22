@@ -2,9 +2,12 @@ __pycache__
 results/
 log/
 
+*.egg-info
 *.pdf
 *.h5
 *.png
 *.log
 *.csv
 *.tex
+
+test_budget/budget_table.md
