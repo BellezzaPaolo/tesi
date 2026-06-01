@@ -98,9 +98,9 @@ class Gradient_az(Gradient):
             self.inv_intR4.assign(1.0 / self.intR**4)
 
             self.alpha1 = fd.assemble( 2 * self.inv_intR * 0.5 * fd.inner(fd.grad(self.R_u), fd.grad(u_old)) * fd.dx \
-                                + self.v * self.R_u * u_old * fd.dx)
+                                + 2 * self.inv_intR * self.v * self.R_u * u_old * fd.dx)
             self.alpha2 = fd.assemble( self.inv_intR2 * 0.5 * fd.inner(fd.grad(self.R_u), fd.grad(self.R_u)) * fd.dx \
-                                + self.v * self.R_u * self.R_u * fd.dx)
+                                + self.inv_intR2 * self.v * self.R_u * self.R_u * fd.dx)
             self.beta1 = fd.assemble(self.beta * 2 * (u_old)**3 * self.R_u * self.inv_intR * fd.dx)
             self.beta2 = fd.assemble(self.beta * 3 * (u_old)**2 * self.R_u**2 * self.inv_intR2 * fd.dx)
             self.beta3 = fd.assemble(self.beta * 2 * u_old * self.R_u**3 * self.inv_intR3 * fd.dx)
@@ -145,8 +145,9 @@ class Gradient_az_explicit(Gradient_az):
                         + self.beta2 / d4 * (1-x)**2 * x**2 
                         + self.beta3 / d4 * (1-x) * x**3 
                         + self.beta4 / d4 * x**4)
+        #self.golden_search(f, a= 0.01, b = 3.0)  
             # Choose tau adaptively by 1D minimization of the model energy.
-            self.tau = fd.Constant(self.golden_search(f))
+            self.tau = fd.Constant(self.golden_search(f, a= 0.01, b = 3.0))
             
             self.tau_history.append(self.tau)
 
@@ -186,7 +187,7 @@ class Gradient_az_semimplicit(Gradient_az):
                         + self.beta3 / d4 * x**3 
                         + self.beta4 / d4 * x**4)
             # Choose tau adaptively by 1D minimization of the model energy.
-            self.tau = fd.Constant(self.golden_search(f))
+            self.tau = fd.Constant(self.golden_search(f, a= 0.01, b = 1000.0))
             self.tau_history.append(self.tau)
             
         self.uh.assign(1 / (1+ self.tau) * ( u_old + self.tau * 1/self.intR * self.R_u))

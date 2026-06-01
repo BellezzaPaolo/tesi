@@ -37,7 +37,7 @@ class Gradient_H1(Gradient):
         For the H1 gradient, the gradient is computed at each step solving the linear variational problem.
         '''
         
-        rhs_E = fd.assemble(0.5 * fd.dot(fd.grad(u_old), fd.grad(self.w)) * fd.dx \
+        rhs_E = fd.assemble(0.5 * fd.inner(fd.grad(u_old), fd.grad(self.w)) * fd.dx \
                 + self.v * u_old * self.w * fd.dx \
                 + self.beta * abs(u_old) **2 * u_old * self.w * fd.dx)
 
@@ -57,7 +57,7 @@ class Gradient_H1(Gradient):
         
         self.tau = fd.Constant(tau)
 
-        self.A = fd.assemble(0.5 * fd.dot(fd.grad(self.u), fd.grad(self.w)) * fd.dx, bcs = self.bcs)
+        self.A = fd.assemble(fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx, bcs = self.bcs)
 
         # Pre-factorized stiffness solve for repeated Riesz projections.
         self.R_u = fd.Function(self.W)
@@ -115,6 +115,6 @@ class Gradient_H1_explicit(Gradient_H1):
         intE = fd.assemble(self.gradE * u_old * fd.dx)
 
         # Update the solution with an explicit step and projection.
-        self.uh.assign(u_old - self.tau * self.gradE - self.tau * intE/intR * self.R_u)
+        self.uh.assign(u_old - self.tau * self.gradE + self.tau * intE/intR * self.R_u)
 
         return E_old

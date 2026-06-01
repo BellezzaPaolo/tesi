@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import time
-from src.Optimizer import Optimizer
+from Optimizer import Optimizer
 
 class Gradient_Descent(Optimizer):
     '''
@@ -11,7 +11,20 @@ class Gradient_Descent(Optimizer):
     '''
 
     def __init__(self, W, bcs, beta, v, grad_type_name, type_discr):
-        super().__init__(W, grad_type_name, type_discr, 'Gradient_Descent')
+        '''
+        Constructor for the gradient descent optimizer.
+        
+        :param W (fd space): The function space for the problem.
+        :param beta (float): The beta parameter for the problem.
+        :param v (fd function): The potential function for the problem.
+        :param grad_type_name (str): A string identifier for the type of gradient method used.
+        :param type_discr (str): A string identifier for the type of discretization used.
+        '''
+        
+        super().__init__(W, beta, v, 'Gradient_Descent')
+
+        self.grad_type_name = grad_type_name
+        self.type_discr = type_discr
 
         # attach the solver for the gradient flow
         self.solver = self.get_solver(W, bcs, beta, v, grad_type_name, type_discr)
@@ -49,24 +62,23 @@ class Gradient_Descent(Optimizer):
             # normalize
             self.solver.uh.assign(self.solver.uh / fd.norm(self.solver.uh,'L2'))
 
-            # self.uh.assign(self.solver.uh)
+            self.uh.assign(self.solver.uh)
 
             # update the solution
             self.u_old.assign(self.solver.uh)
 
             # compute the energy and the relative error
-            # self.E = self.compute_energy(self.uh)
+            self.E = self.energy()
             rel_error = abs(self.E - self.E_ref) / abs(self.E_ref)
 
             if verbose:
-                print(f"Iteration {i}, Energy: {self.E:.6e}, Relative Error: {rel_error:.6e}, Time: {time.time() - t_start:.2f} s")
+                print(f"\rIteration {i}, Energy: {self.E:.6e}, Relative Error: {rel_error:.6e}, Time: {time.time() - t_start:.2f} s", end="", flush=True)
 
             if save_history:
                 self.history_E.append(self.E)
 
             # check the stopping criterion
             if rel_error < toll:
-                print(f"Convergence achieved after {i+1} iterations.")
                 converged = True
                 break
 
@@ -74,8 +86,8 @@ class Gradient_Descent(Optimizer):
         time_tot = time.time() - t_start
 
         # compute the final quantities
-        # self.energy()
-        # self.compute_lambda()
+        self.energy()
+        self.compute_lambda()
 
         res = dict(converged = converged,
                    energy = self.E,
@@ -88,11 +100,11 @@ class Gradient_Descent(Optimizer):
         
         if verbose:
             # print('\r', end="", flush=True)
-            # print('\r', end="", flush=True)
+            print('\r', end="", flush=True)
             if converged:
-                print(f'{self.name_optimizer} minimization using {self.solver.grad_type_name}-{self.solver.type_discr} gradient converged at iteration {i+1} at energy {self.E:.6f} and lambda {self.lam:.6f}')
+                print(f'{self.name_optimizer} minimization using {self.solver.grad_type_name}-{self.solver.type_discr} gradient with tau = {float(self.solver.tau)} converged at iteration {i+1} at energy {self.E:.6f} and lambda {self.lam:.6f}')
             else:
-                print(f'{self.name_optimizer} minimization using {self.solver.grad_type_name}-{self.solver.type_discr} gradient NOT converged in {i+1} iterate')
+                print(f'{self.name_optimizer} minimization using {self.solver.grad_type_name}-{self.solver.type_discr} gradient NOT converged in {i+1} iterate. Final relative error: {rel_error:.6e} with tau = {float(self.solver.tau)}.')
 
         return res
 
@@ -105,7 +117,7 @@ class Gradient_Descent(Optimizer):
         '''
 
         fig, ax = plt.subplots(2,1, figsize=(5,10))
-        fig.suptitle(f'{self.name_optimizer} with {self.solver.grad_type_name}-{self.solver.type_discr}, beta={self.solver.beta}, tau={self.solver.tau }')
+        fig.suptitle(f'{self.name_optimizer} with {self.solver.grad_type_name}-{self.solver.type_discr}, beta = {float(self.solver.beta)}, tau = {float(self.solver.tau) }')
         ax[0].semilogy(range(1,len(self.history_E)+1), [abs(E - self.E_ref)/self.E_ref for E in self.history_E], marker='o')
         ax[0].set_xlabel('Iteration')
         ax[0].set_ylabel('Relative Error on Energy')
@@ -137,7 +149,7 @@ class Gradient_Descent(Optimizer):
                 plt.savefig(filesave.replace('.png','_tau.png'))
                 plt.close()
 
-    def save_data(self, filename, res):
+    def save_data(self, filename, res, test_name):
         '''
         Save minimization result in a csv file
 
@@ -145,6 +157,13 @@ class Gradient_Descent(Optimizer):
         :param opt_name (string): specify which gradient has been used
         :param res (dict): dictionary that contains all the important data
         '''
+        name = self.solver.grad_type_name + '_' + self.solver.type_discr
+        if self.solver.adaptivity:
+            name += '_ada'
+            tau = float(np.mean(np.array(self.solver.tau_history)))
+        else:
+            tau = float(self.solver.tau)
+
         with open(filename, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([self.solver.grad_type_name + '_' + self.solver.type_discr, 12/np.sqrt(self.solver.W.dim()), self.solver.beta, float(self.solver.tau), res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])
+            writer.writerow([name, 12/np.sqrt(self.solver.W.dim()), test_name, tau, res["energy"], res["lam"], res["iterate"], res["error"], res["time_tot"], res["mean_time"]])

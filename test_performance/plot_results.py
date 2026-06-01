@@ -1,0 +1,62 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from pathlib import Path
+import numpy as np
+
+
+test_case_num = '3'
+xmin = 0.013
+xmax = 100
+
+case_folder = Path(__file__).parent / f"test_case{test_case_num[0]}"
+
+df_gd = pd.read_csv(case_folder / 'GD.csv',
+                    dtype={"method": str, "h": float, "test_name": str, "tau": float, "energy": float, "lambda": float, "iterate": int, "error": float, "total_time": float, "mean_time": float})
+
+filtered_gd = df_gd[df_gd['test_name'] == test_case_num]
+
+opt = sorted(filtered_gd['method'].unique())
+print(f"Unique methods: {opt}")
+
+
+color = {'L2_semimplicit': '#9467bd', 'H1_explicit': '#ff7f0e', 'a0_explicit': '#d62728',
+         'az_explicit': '#1f77b4', 'az_explicit_ada': '#6baed6', 'az_semimplicit': '#2ca02c', 'az_semimplicit_ada': '#8cc66b'}
+
+
+fig,ax = plt.subplots(1,2,figsize=(20, 10))
+
+for i,name in enumerate(opt):
+    subset = filtered_gd[filtered_gd['method'] == name].sort_values('tau')
+    if name[-3:] == 'ada':
+        it = subset['iterate'].values
+        ax[0].loglog([xmin,xmax], [it,it], label=name, color=color[name])
+        ax[0].loglog(subset['tau'].values, it, marker = 'o', color=color[name])
+
+        time_tot = subset['total_time'].values
+        ax[1].loglog([xmin,xmax], [time_tot,time_tot], label=name, color=color[name])
+        ax[1].loglog(subset['tau'].values, time_tot, marker = 'o', color=color[name])
+    else:
+        ax[0].loglog(subset['tau'].values, subset['iterate'].values, marker='o', label=name, color=color[name])
+
+        ax[1].loglog(subset['tau'].values, subset['total_time'].values, marker='o', label=name, color=color[name])
+
+ax[0].set_xlim([xmin,xmax])
+ax[0].set_ylim([None, 450])
+ax[0].set_xlabel('Tau')
+ax[0].set_ylabel('Iterate')
+ax[0].set_title(f'Results for Test Case {test_case_num}')
+ax[0].legend()
+ax[0].grid(True, which="both", ls="--")
+
+ax[1].set_xlim([xmin,xmax])
+ax[1].set_ylim([None, 1000])
+ax[1].set_xlabel('Tau')
+ax[1].set_ylabel('Total Time (s)')
+ax[1].set_title(f'Results for Test Case {test_case_num}')
+ax[1].legend()
+ax[1].grid(True, which="both", ls="--")
+
+
+fig.savefig(case_folder / "images" / f"GD_results{test_case_num}.png")
+plt.close(fig)
+plt.show()

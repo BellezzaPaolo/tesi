@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import time
-from src.gradients import L2_Gradients, a0_Gradients, H1_Gradients, az_Gradients
+import gradients #import L2_Gradients, H1_Gradients, a0_Gradients, az_Gradients
 
 class Optimizer(abc.ABC):
     '''
@@ -13,20 +13,24 @@ class Optimizer(abc.ABC):
     '''
 
     @abc.abstractmethod
-    def __init__(self, W, grad_type_name, type_discr, name_optimizer):
+    def __init__(self, W, beta, v, name_optimizer):
         '''
         Constructor for the optimizer class. 
 
         :param W (fd space): The function space for the problem.
-        :param grad_type_name (str): A string identifier for the type of gradient method used.
-        :param type_discr (str): A string identifier for the type of discretization used.
+        :param beta (float): The beta parameter for the problem.
+        :param v (fd function): The potential function for the problem.
+        :param name_optimizer (str): A string identifier for the name of the optimizer used. This is used for logging and plotting purposes.
 
         NOTE: it is declared as an abstract method because every subclasses must implement the part to attach the solver(s).
         '''
 
         self.name_optimizer = name_optimizer
-        self.grad_type_name = grad_type_name
-        self.type_discr = type_discr
+
+        # save problem parameters
+        self.W = W
+        self.beta = beta
+        self.v = v
 
         # parameters of the solution
         self.lam = 0.
@@ -45,37 +49,60 @@ class Optimizer(abc.ABC):
         '''
         if grad_type_name in ['L2', 'l2', 'L_2']:
             if type_discr in ['explicit', 'fully_explicit', 'E', 'e']:
-                return L2_Gradients.Gradient_L2_explicit(W, bcs, beta, v)
+                return gradients.L2_Gradients.Gradient_L2_explicit(W, bcs, beta, v)
             elif type_discr in ['semimplicit', 'semi-implicit', 'S', 's']:
-                return L2_Gradients.Gradient_L2_semimplicit(W, bcs, beta, v)
+                return gradients.L2_Gradients.Gradient_L2_semimplicit(W, bcs, beta, v)
             elif type_discr in ['no_projection', 'no-projection', 'N', 'n']:
                 UserWarning("you are using the L2 gradient without the projection term. This will not work well for ParaFlowS.")
-                return L2_Gradients.Gradient_L2_no_projection(W, bcs, beta, v)
+                return gradients.L2_Gradients.Gradient_L2_no_projection(W, bcs, beta, v)
             else:
                 raise ValueError(f"Unknown discretization type {type_discr} for L2 gradient.")
             
         elif grad_type_name in ['H1', 'h1', 'H_1']:
             if type_discr in ['explicit', 'fully_explicit', 'E', 'e']:
-                return H1_Gradients.Gradient_H1_explicit(W,  bcs, beta, v)
+                return gradients.H1_Gradients.Gradient_H1_explicit(W,  bcs, beta, v)
             else:
                 raise ValueError(f"Unknown discretization type {type_discr} for H1 gradient.")
             
         elif grad_type_name in ['a0', 'A0', 'a_0']:
             if type_discr in ['explicit', 'fully_explicit', 'E', 'e']:
-                return a0_Gradients.Gradient_a0(W,  bcs, beta, v)
+                return gradients.a0_Gradients.Gradient_a0_explicit(W,  bcs, beta, v)
             else:
                 raise ValueError(f"Unknown discretization type {type_discr} for a0 gradient.")
             
         elif grad_type_name in ['az', 'AZ', 'a_z']:
             if type_discr in ['explicit', 'fully_explicit', 'E', 'e']:
-                return az_Gradients.Gradient_az_explicit(W, bcs, beta, v)
+                return gradients.az_Gradients.Gradient_az_explicit(W, bcs, beta, v)
             elif type_discr in ['semimplicit', 'semi-implicit', 'S', 's']:
-                return az_Gradients.Gradient_az_semimplicit(W, bcs, beta, v)
+                return gradients.az_Gradients.Gradient_az_semimplicit(W, bcs, beta, v)
             else:
                 raise ValueError(f"Unknown discretization type {type_discr} for az gradient.")
             
         else:
             raise ValueError(f"Unknown gradient type {grad_type_name} or discretization type {type_discr}.")
+    
+    def energy(self, uh = None):
+        '''
+        Computes the energy associated to the given solution
+        
+        :param uh (fd.Function): solution where compute the energy, if not provided computes the solution in the point self.uh
+        '''
+        if uh is not None:
+            return fd.assemble(0.5 *( 0.5 * fd.dot(fd.grad(uh), fd.grad(uh)) + self.v * uh**2 + self.beta/2 * abs(uh) **4) * fd.dx)
+
+        else:
+            return fd.assemble(( 0.25 * fd.dot(fd.grad(self.uh), fd.grad(self.uh)) + 0.5 * self.v * self.uh**2 + 0.25 * self.beta * abs(self.uh) **4 )* fd.dx)
+        
+        
+    def compute_lambda(self):
+        '''
+        Compute the lambda associated to the energy of self.uh
+        '''
+
+        self.lam = 2 * self.E + float(self.beta) /2 * fd.norm(self.uh,'L4')**4
+        
+        return self.lam
+
         
     def compile(self, u0, E_ref):
         '''
