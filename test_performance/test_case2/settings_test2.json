@@ -1,0 +1,33 @@
+{
+  "test_name": "2",
+  "case_folder": "~/Desktop/tesi/tesi/test_performance/test_case2",
+  "beta": 1000,
+  "mesh": {
+    "call": "RectangleMesh",
+    "xmax": 6,
+    "ymax": 6,
+    "xmin": -6,
+    "ymin": -6,
+    "nx": 256,
+    "diagonal": "left"
+  },
+  "function_space": {
+    "family": "CG",
+    "degree": 1
+  },
+  "bcs": {
+    "type": "DirichletBC",
+    "value": 0.0,
+    "boundaries": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "potential": "lattice",
+  "initial_guess": "general_TF",
+  "maximum_iterations": 100,
+  "tollerance": 1e-05,
+  "energy_reference": 15.204824828806668
+}
