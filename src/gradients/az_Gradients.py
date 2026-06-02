@@ -53,6 +53,7 @@ class Gradient_az(Gradient):
             self.tau = fd.Constant(1.0) # dummy value, the actual time step will be computed at each step.
             self.tau_history = []
         else:
+            self.adaptivity = False
             self.tau = fd.Constant(tau)
 
         # Built the Reisz representative and the linear part of the variational problem
