@@ -9,5 +9,6 @@ log/
 *.log
 *.csv
 *.tex
+*.md
 
 test_budget/budget_table.md
