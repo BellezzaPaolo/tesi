@@ -8,7 +8,48 @@ from pathlib import Path
 import numpy as np
 import firedrake as fd
 from test_case3.pot_3 import RandomDisorderPotential
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+def plot_function(f, title):
+    # plot the potential for visual verification
+    v_func = fd.Function(W)
+    v_func.interpolate(f)
+    div_theme = LinearSegmentedColormap.from_list(
+        "div_theme",
+        [
+            "#2c3e50",  # dark blue
+            "#4a90e2",  # light blue
+            "#ffffff",  # center (zero)
+            "#f5b041",  # light orange
+            "#e67e22"   # strong accent
+        ]
+    )
+    fig, ax = plt.subplots(1,1, figsize=(10,10))
+    col = fd.tripcolor(v_func, axes=ax, cmap=div_theme)
+    ax.set_aspect('equal', adjustable='box')
+    ax.set_xlim(settings['mesh']['xmin'], settings['mesh']['xmax'])
+    ax.set_ylim(settings['mesh']['ymin'], settings['mesh']['ymax'])
+    ax.margins(0)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    cax = inset_axes(
+        ax,
+        width="100%",   # exact same width as plotting axis
+        height="4%",
+        loc="lower left",
+        bbox_to_anchor=(0.0, -0.08, 1.0, 1.0),
+        bbox_transform=ax.transAxes,
+        borderpad=0,
+    )
+    fig.colorbar(col, cax=cax, orientation='horizontal')
+    # ax.axis('off')
+    
+    images_dir = Path(settings['case_folder']).expanduser() / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(images_dir / f"{title}_{settings['test_name']}.png")
+    plt.show()
 
 if len(sys.argv) >1:
     path = Path(sys.argv[1])
@@ -97,8 +138,9 @@ elif settings['potential'] == 'randomized':
     v.dat.data[:] = vals
 
 else:
-    NameError('test must be 1, 2 or 3')
+    raise NameError('test must be 1, 2 or 3')
 
+plot_function(v, title="potential")
 
 # Build initial guess
 if settings['initial_guess'] == 'linear_GS':
@@ -114,6 +156,7 @@ else:
 def energy(uh, v = v, beta = beta):
     return fd.assemble(0.5 *( 0.5 * fd.inner(fd.grad(uh), fd.grad(uh)) + (v * uh )* uh + beta/2 * uh * uh *uh * uh) * fd.dx)
 
+plot_function(u0, title="initial_guess")
 
 u = fd.TrialFunction(W)
 w = fd.TestFunction(W)
@@ -161,3 +204,5 @@ print()
 print()
 print('Ground truth energy:', computed_energy, flush =True)
 print('Saved updated JSON to:', path)
+
+plot_function(uh, title="solution_ground_truth")
