@@ -60,8 +60,8 @@ table_path.write_text("\n".join(lines) + "\n")
 print(f"Saved markdown summary table to: {table_path}")
 
 
-color = {'L2_semimplicit': '#9467bd', 'H1_explicit': '#ff7f0e', 'a0_explicit': '#d62728',
-         'az_explicit': '#1f77b4', 'az_explicit_ada': '#6baed6', 'az_semimplicit': '#2ca02c', 'az_semimplicit_ada': '#8cc66b'}
+color = {"L2_explicit":'#e377c2', "L2_semimplicit": '#1f77b4',"H1_explicit": '#9467bd', 
+       "a0_explicit": '#d62728', "az_explicit": '#ff7f0e', "az_semimplicit": "#2ca02c"}
 
 
 fig,ax = plt.subplots(1,2,figsize=(20, 10))
@@ -70,16 +70,16 @@ for i,name in enumerate(opt):
     subset = filtered_gd[filtered_gd['method'] == name].sort_values('tau')
     if name[-3:] == 'ada':
         it = subset['iterate'].values
-        ax[0].loglog([xmin,xmax], [it,it], label=name, color=color[name])
-        ax[0].loglog(subset['tau'].values, it, marker = 'o', color=color[name])
+        ax[0].loglog([xmin,xmax], [it,it], '--', linewidth = 3, label=name, color=color[name[:-4]])
+        ax[0].loglog(subset['tau'].values, it, marker = 's', markersize=8, color=color[name[:-4]])
 
         time_tot = subset['total_time'].values
-        ax[1].loglog([xmin,xmax], [time_tot,time_tot], label=name, color=color[name])
-        ax[1].loglog(subset['tau'].values, time_tot, marker = 'o', color=color[name])
+        ax[1].loglog([xmin,xmax], [time_tot,time_tot],'--', linewidth = 3, label=name, color=color[name[:-4]])
+        ax[1].loglog(subset['tau'].values, time_tot, marker = 's', markersize=8, color=color[name[:-4]])
     else:
-        ax[0].loglog(subset['tau'].values, subset['iterate'].values, marker='o', label=name, color=color[name])
+        ax[0].loglog(subset['tau'].values, subset['iterate'].values, '-', linewidth = 3, marker='o', label=name, color=color[name])
 
-        ax[1].loglog(subset['tau'].values, subset['total_time'].values, marker='o', label=name, color=color[name])
+        ax[1].loglog(subset['tau'].values, subset['total_time'].values, '-', linewidth = 3, marker='o', label=name, color=color[name])
 
 ax[0].set_xlim([xmin,xmax])
 ax[0].set_ylim([None, 450])

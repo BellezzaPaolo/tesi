@@ -85,6 +85,9 @@ for t in type:
 #-----------------------------------------------------------------------------------------------------------------------------------------
 # Plotting section.
 #-----------------------------------------------------------------------------------------------------------------------------------------
+col = {"L2_e":'#e377c2', "L2_s": '#1f77b4',"H1_e": '#9467bd', 
+       "a0_e": '#d62728', "az_e": '#ff7f0e', "az_s": "#2ca02c"}
+
 fig, ax = plt.subplots(1,2, figsize=(20,10))
 
 #First subplot: time_assemble vs N, with log-log scaling.
@@ -94,7 +97,8 @@ ax[0].set_xscale('log', base = 2)
 # ax[0].plot(N, N, 'k--', label='O(N)')
 # ax[0].plot(N, (N)**2, 'k:', label='O(N^2)')
 for method, ada, Ta_m in T_assemble:
-    ax[0].plot(N, Ta_m, 'o-',linewidth=3, markersize=7, label=f'{method} {"adaptive" if ada == 1 else "fixed"}')
+    name = f'{method} {"adaptive" if ada == 1 else "fixed"}'
+    ax[0].plot(N, Ta_m, 's--' if ada == 1 else 'o-',linewidth=3, markersize=7, label=name, color = col[method])
 # ax[0].plot(N,(N)**1.5, 'k*',label = 'O(N^1.5)')
 # ax[0].plot(N,(N)**0.5, 'k.',label = 'O(N^0.5)')
 ax[0].set_xlabel('N')
@@ -110,7 +114,8 @@ ax[1].plot(N, N/N[0], 'k--', label='O(N)')
 ax[1].plot(N,(N/N[0])**0.5, 'k:',label = 'O(N^0.5)')
 # ax[1].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
 for method, ada, Ta_m in T_assemble:
-    ax[1].plot(N, Ta_m/Ta_m[0], 'o-',linewidth=3, markersize=7, label=f'{method} {"adaptive" if ada == 1 else "fixed"}')
+    name = f'{method} {"adaptive" if ada == 1 else "fixed"}'
+    ax[1].plot(N, Ta_m/Ta_m[0], 's--' if ada == 1 else 'o-', linewidth=3, markersize=7, label=name, color = col[method])
 # ax[1].plot(N,(N/N[0])**1.5, 'k*',label = 'O(N^1.5)')
 ax[1].set_xlabel('N')
 ax[1].set_ylabel('Time assemble [s]')
@@ -129,7 +134,8 @@ ax[0].set_xscale('log', base = 2)
 # ax[0].plot(N, (N), 'k--', label='O(N)')
 # ax[0].plot(N, (N)**2, 'k:', label='O(N^2)')
 for method, ada, Ts1_m in T_step:
-    ax[0].plot(N, Ts1_m, 'o-', linewidth=3, markersize=7, label=f'{method} {"adaptive" if ada == 1 else "fixed"}')
+    name = f'{method} {"adaptive" if ada == 1 else "fixed"}'
+    ax[0].plot(N, Ts1_m, 's--' if ada == 1 else 'o-', linewidth=3, markersize=7, label=name, color = col[method])
 # ax[0].plot(N,(N)**0.75, 'k*',label = 'O(N^0.75)')
 ax[0].set_xlabel('Number of refinements')#, fontsize=28, fontweight='bold')
 ax[0].set_ylabel('Computational time [s]')#, fontsize=28, fontweight='bold')
@@ -145,7 +151,8 @@ ax[1].plot(N, (N/N[0]), 'k--', label='O(N)') # , linewidth=3, markersize=10
 ax[1].plot(N,(N/N[0])**0.75, 'k:',label = 'O(N^0.75)')
 # ax[1].plot(N, (N/N[0])**2, 'k:', label='O(N^2)')
 for method, ada, Ts1_m in T_step:
-    ax[1].plot(N, Ts1_m/Ts1_m[0], 'o-', linewidth=3, markersize=7, label=f'{method} {"adaptive" if ada == 1 else "fixed"}')
+    name = f'{method} {"adaptive" if ada == 1 else "fixed"}'
+    ax[1].plot(N, Ts1_m/Ts1_m[0], 's--' if ada == 1 else 'o-', linewidth=3, markersize=7, label=name, color = col[method])
 ax[1].set_xlabel('Number of refinements')#, fontsize=28, fontweight='bold')
 ax[1].set_ylabel('Computational time [s]')#, fontsize=28, fontweight='bold')
 ax[1].set_title('Computational time per iteration')#, fontsize=30, fontweight='bold')

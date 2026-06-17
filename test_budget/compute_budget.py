@@ -50,7 +50,8 @@ benchmarks = [
     ('L2_e', gradients.Gradient_L2_explicit, tau),
     ('L2_s', gradients.Gradient_L2_semimplicit, tau),
     ('H1_e', gradients.Gradient_H1_explicit, tau),
-    ('a0_e', gradients.Gradient_a0_explicit, tau),  
+    ('a0_e', gradients.Gradient_a0_explicit, tau),
+    ('a0_e', gradients.Gradient_a0_explicit, None), # adaptive time step
     ('az_e', gradients.Gradient_az_explicit, tau),
     ('az_e', gradients.Gradient_az_explicit, None), # adaptive time step
     ('az_s', gradients.Gradient_az_semimplicit, tau),
