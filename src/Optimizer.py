@@ -122,6 +122,44 @@ class Optimizer(abc.ABC):
         self.E = 0.
         self.lam = 0.
         self.history_E = []
+    
+    def golden_search(self, func, a = 0.01, b = 1.0, tol = 1e-5):
+        """
+        Golden-section search
+        to find the minimum of f on [a,b]
+
+        * f: a strictly unimodal function on [a,b]
+
+        Example:
+        >>> def f(x): return (x - 2) ** 2
+        >>> x = gss(f, 1, 5)
+        >>> print(f"{x:.5f}")
+        2.00000
+
+        """
+        # Golden-section search over scalar step size interval [a, b].
+        invphi = (fd.sqrt(5) - 1) / 2  # 1 / phi
+
+        x = np.linspace(a - 0.3, b + 0.5, 100)
+
+        while b - a > tol:
+            c = b - (b - a) * invphi
+            d = a + (b - a) * invphi
+            if func(c) < func(d):
+                b = d
+            else:  # func(c) > func(d) to find the maximum
+                a = c
+
+        fig, ax = plt.subplots()
+        ax.plot(x, func(x))
+        plt.plot((b + a) / 2, func((b + a) / 2), 'ro', label='Minimum')
+        plt.legend()
+        plt.show()
+
+        print()
+        print(f'new energy {func((a+b)/2)/2} and old energy {func(0)/2}')
+
+        return (b + a) / 2
 
     @abc.abstractmethod
     def minimize(self, max_iter, toll_E, verbose):

@@ -28,6 +28,8 @@ class ParaFlowS(Optimizer):
 
         super().__init__(W, beta, v, 'ParaFlowS')
 
+        self.adaprive_gamma = False
+
         # attach the solver for the fine propagators
         self.fine_type_name = fine_type_name
         self.fine_type_discr = fine_type_discr
@@ -38,7 +40,7 @@ class ParaFlowS(Optimizer):
         self.coarse_type_discr = coarse_type_discr
         self.coarse_solver = self.get_solver(W, bcs, beta, v, coarse_type_name, coarse_type_discr)
 
-    def compile(self, u0, E_ref, Nf, Nc = 10, tau_f = None, tau_c = None):
+    def compile(self, u0, E_ref, Nf, Nc = 10, tau_f = None, tau_c = None, gamma = None):
         '''
         Compile the forms and prepare the problem for the ParaFlowS minimization.
 
@@ -48,6 +50,7 @@ class ParaFlowS(Optimizer):
         :param Nc (int): maximum number of coarse steps to perform at each iteration of the Parareal algorithm. Default is 100.
         :param tau_f (float): time step for the fine propagator. If None, an adaptive time step will be used.
         :param tau_c (float): time step for the coarse propagator. If None, an adaptive time step will be used.
+        :param gamma (float): parameter of the correction formula of ParaFlowS. If None, it will be chooosen adaptively.
         '''
         super().compile(u0, E_ref)
 
@@ -58,6 +61,14 @@ class ParaFlowS(Optimizer):
         self.coarse_solver.assemble_problem(tau_c)
 
         self.correction_uh = fd.Function(self.W)
+
+        if gamma is None:
+            self.gamma = fd.Constant(1.0) # Dummy value only to initialize it
+            self.adaptive_gamma = True
+            self.gamma_history = []
+        else:
+            self.gamma = gamma
+            self.adaptive_gamma = False
 
     def minimize(self, MaxIter, toll, verbose = True, save_history = True, debug = False):
         '''
@@ -96,19 +107,25 @@ class ParaFlowS(Optimizer):
                 self.fine_solver.uh.assign(self.fine_solver.uh / fd.norm(self.fine_solver.uh,'L2'))
 
                 self.fine_solver.step(self.fine_solver.uh)
-                energy_new = self.energy(self.fine_solver.uh/ fd.norm(self.fine_solver.uh,'L2'))
-
+                self.E = self.energy(self.fine_solver.uh/ fd.norm(self.fine_solver.uh,'L2'))
+                rel_error = abs(self.E - self.E_ref) / self.E_ref
+                
                 if debug:
-                    print(f'fine energy: {energy_new} fine error: {abs(energy_new - self.E_ref) / self.E_ref}')
+                    print(f'fine energy: {self.E} fine error: {abs(self.E - self.E_ref) / self.E_ref}')
 
                 if save_history:
-                    self.history_fine.append(energy_new)
+                    self.history_fine.append(self.E)
                 
-                alpha += energy_new/energy_old
+                alpha += self.E/energy_old
 
-                energy_old = energy_new
+                energy_old = self.E
                 N_iter_fine += 1 
 
+                if rel_error < toll:
+                    converged = True
+                    if debug:
+                        print('     Exiting because the error in the fine phase is small enough')
+                    break
 
             # Correction direction = fine prediction - coarse prediction.
             self.correction_uh.assign(self.fine_solver.uh - self.coarse_solver.uh) # not necessary, could be done also self.fine_solver.uh.assign(self.fine_solver.uh - self.coarse_solver.uh)
@@ -118,10 +135,57 @@ class ParaFlowS(Optimizer):
             alpha = min(1.0, alpha + 0.01)
             # print(f'Alpha value: {alpha}')
 
+            if rel_error < toll:
+                if debug:
+                    print('     Exiting because the error in the fine phase is small enough')
+                break
+
             for j in range(self.Nc):
 
+                if self.adaptive_gamma:
+                    #line search
+                    self.alpha0 = fd.assemble(0.5 * fd.inner(fd.grad(self.u_old), fd.grad(self.u_old)) * fd.dx \
+                                        + self.v * self.u_old * self.u_old * fd.dx)
+                    self.alpha1 = fd.assemble( 2 * 0.5 * fd.inner(fd.grad((self.coarse_solver.uh + self.correction_uh)), fd.grad(self.u_old)) * fd.dx \
+                                        + 2 * self.v * (self.coarse_solver.uh + self.correction_uh) * self.u_old * fd.dx)
+                    self.alpha2 = fd.assemble( 0.5 * fd.inner(fd.grad((self.coarse_solver.uh + self.correction_uh)), fd.grad((self.coarse_solver.uh + self.correction_uh))) * fd.dx \
+                                        + self.v * (self.coarse_solver.uh + self.correction_uh) * (self.coarse_solver.uh + self.correction_uh) * fd.dx)
+                    
+                    self.beta0 = fd.assemble(self.beta * 0.5 * (self.u_old)**4 * fd.dx)
+                    self.beta1 = fd.assemble(self.beta * 2 * (self.u_old)**3 * (self.coarse_solver.uh + self.correction_uh) * fd.dx)
+                    self.beta2 = fd.assemble(self.beta * 3 * (self.u_old)**2 * (self.coarse_solver.uh + self.correction_uh)**2 * fd.dx)
+                    self.beta3 = fd.assemble(self.beta * 2 * self.u_old * (self.coarse_solver.uh + self.correction_uh)**3 * fd.dx)
+                    self.beta4 = fd.assemble(self.beta * 0.5 * (self.coarse_solver.uh + self.correction_uh)**4 * fd.dx)
+
+                    self.gamma0 = fd.assemble(self.u_old**2 * fd.dx)
+                    self.gamma1 = fd.assemble(2 * self.u_old * (self.coarse_solver.uh + self.correction_uh) * fd.dx)
+                    self.gamma2 = fd.assemble((self.coarse_solver.uh + self.correction_uh)**2 * fd.dx)
+
+
+                    def den(x):
+                        return ((1- x)**2 * self.gamma0 + (1-x)* x * self.gamma1 + x**2 * self.gamma2)**0.5
+
+                    def f(x):
+                        d2 = den(x)**2
+                        d4 = den(x)**4
+                        return (self.alpha0 / d2 * (1-x)**2
+                                + self.alpha1 / d2 * (1-x)*x
+                                + self.alpha2 / d2 * x**2
+                                + self.beta0 / d4 * (1-x)**4 
+                                + self.beta1 / d4 * (1-x)**3 * x 
+                                + self.beta2 / d4 * (1-x)**2 * x**2 
+                                + self.beta3 / d4 * (1-x) * x**3 
+                                + self.beta4 / d4 * x**4)
+                #self.golden_search(f, a= 0.01, b = 3.0)  
+                    # Choose tau adaptively by 1D minimization of the model energy.
+                    self.gamma = self.golden_search(f, a = 0.01, b = 1.0)
+                    
+                    self.gamma_history.append(self.gamma)
+
+
                 # Apply correction on top of current coarse state.
-                self.uh.assign(self.coarse_solver.uh + self.correction_uh)
+                self.uh.assign((1 - self.gamma) * self.u_old + self.gamma * (self.coarse_solver.uh + self.correction_uh))
+                print(f'gamma {self.gamma}')
 
                 # normalize
                 self.uh.assign(self.uh / fd.norm(self.uh,'L2'))
@@ -256,7 +320,6 @@ class ParaFlowS(Optimizer):
         :param opt_name (string): specify which gradient has been used
         :param res (dict): dictionary that contains all the important data
         '''
-        self.gamma = 1.0
 
         name_f = self.fine_solver.grad_type_name + '_' + self.fine_solver.type_discr
         if self.fine_solver.adaptivity:
