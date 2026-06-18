@@ -27,7 +27,7 @@
   },
   "potential": "randomized",
   "initial_guess": "general_TF",
-  "maximum_iterations": 100,
+  "maximum_iterations": 500,
   "tollerance": 1e-05,
   "energy_reference": 4.602621438437325
 }

@@ -4,6 +4,7 @@ This module implements the a0 gradient of the cost functional.
 
 import firedrake as fd
 from .Gradients import Gradient
+import time
 
 class Gradient_a0(Gradient):
     '''
@@ -48,11 +49,16 @@ class Gradient_a0(Gradient):
 
         :param tau (float): time step
         '''
-        #TODO: add support for adaptive time step, but the cost of a0 gradient is more than a single step of az or L2 so it's not implemented yet.
         if tau is None:
-            raise ValueError("The time step tau must be provided for the a_0 gradient")
-        
-        self.tau = fd.Constant(tau)
+            self.adaptivity = True
+            self.tau = fd.Constant(1.0) # dummy value, the actual time step will be computed at each step.
+            self.tau_history = []
+            self.proj_term = fd.Function(self.W)
+        else:
+            self.adaptivity = False
+            self.tau = fd.Constant(tau)
+
+        self.shift = fd.Constant(0.0)
 
         # Solver used by both Riesz projections in the a0 metric.
         self.R_u = fd.Function(self.W)
@@ -72,8 +78,11 @@ class Gradient_a0(Gradient):
 
         :param u_old (Function): the current iterate
         '''
+        # t0 = time.time()
         self.compute_Reiz_representative(u_old)
         self.compute_gradient(u_old)
+        # t1 = time.time()
+        # print(f"Time to compute Riesz representative and gradient: {t1-t0:.2f} seconds")
 
         self.alpha0 = fd.assemble(0.5 * fd.inner(fd.grad(u_old), fd.grad(u_old)) * fd.dx \
                             + self.v * u_old * u_old * fd.dx)
@@ -81,6 +90,26 @@ class Gradient_a0(Gradient):
         self.gamma0 = fd.assemble(u_old**2 * fd.dx)
 
         E_old = 0.5 * (self.alpha0/self.gamma0**2 + self.beta0/self.gamma0**4)
+
+        self.shift = fd.assemble((u_old + self.R_u2u) * u_old * fd.dx) / fd.assemble(self.R_u * u_old * fd.dx)
+
+        if self.adaptivity:
+            self.proj_term.assign(-self.R_u2u + self.shift * self.R_u)
+
+            self.alpha1 = fd.assemble(2 * 0.5 * fd.inner(fd.grad(u_old), fd.grad(self.proj_term)) * fd.dx + \
+                                      2 * self.v * u_old * (self.proj_term) * fd.dx)
+            self.alpha2 = fd.assemble(0.5 * fd.inner(fd.grad(self.proj_term), fd.grad(self.proj_term)) * fd.dx \
+                                + self.v * (self.proj_term) * (self.proj_term) * fd.dx)
+            self.beta1 = fd.assemble(self.beta * 2 * u_old**3 * (self.proj_term) * fd.dx)
+            self.beta2 = fd.assemble(self.beta * 3 * u_old**2 * (self.proj_term)**2 * fd.dx)
+            self.beta3 = fd.assemble(self.beta * 2 * u_old * (self.proj_term)**3 * fd.dx)
+            self.beta4 = fd.assemble(self.beta * 0.5 * (self.proj_term)**4 * fd.dx)
+            self.gamma1 = fd.assemble(2 * u_old * (self.proj_term) * fd.dx)
+            self.gamma2 = fd.assemble((self.proj_term)**2 * fd.dx)
+        # t2 = time.time()
+
+        # print(f"Time to compute energy and coefficients for the golden search: {t2-t1:.2f} seconds")
+
         return E_old
 
 
@@ -100,12 +129,36 @@ class Gradient_a0_explicit(Gradient_a0):
 
         :param u_old (Function): the current iterate
         '''
-        
+        # t3 = time.time()
         E_old = super().step(u_old)
+        # t4 = time.time()
+        # print(f"Time to compute the step: {t4-t3:.2f} seconds")
 
-        intE = fd.assemble((u_old + self.R_u2u) * u_old * fd.dx)
-        intR = fd.assemble(self.R_u * u_old * fd.dx)
+        if self.adaptivity:
+            def den(x):
+                return ((1- x)**2 * self.gamma0 + (1-x)* x * self.gamma1 + x**2 * self.gamma2)**0.5
 
-        self.uh.assign((1 - self.tau) * u_old  - self.tau * self.R_u2u + self.tau * intE/intR * self.R_u)
+            def f(x):
+                d2 = den(x)**2
+                d4 = den(x)**4
+                return (self.alpha0 / d2 * (1-x)**2
+                        + self.alpha1 / d2 * (1-x)*x
+                        + self.alpha2 / d2 * x**2
+                        + self.beta0 / d4 * (1-x)**4 
+                        + self.beta1 / d4 * (1-x)**3 * x 
+                        + self.beta2 / d4 * (1-x)**2 * x**2 
+                        + self.beta3 / d4 * (1-x) * x**3 
+                        + self.beta4 / d4 * x**4) 
+            # t6 = time.time()
+            # Choose tau adaptively by 1D minimization of the model energy.
+            self.tau = fd.Constant(self.golden_search(f, a= 0.01, b = 1.0))
+            # t7 = time.time()
+            # print(f"Time to compute the golden search: {t7-t6} seconds")
+            self.tau_history.append(self.tau.values()[0])
+
+        # t8 = time.time()
+        self.uh.assign((1 - self.tau) * u_old  - self.tau * self.R_u2u + self.tau * self.shift * self.R_u)
+        # t9 = time.time()
+        # print(f"Time to update the solution: {t9-t8} seconds")
 
         return E_old

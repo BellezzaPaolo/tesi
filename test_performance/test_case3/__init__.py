@@ -1,0 +1,1 @@
+# file used only to import the potential of test case 3 also outside of this folder

@@ -2,15 +2,15 @@
 ## Framework
 Given the GPE:
 $$
--\Delta z + V z+ \beta |z|^2 z = \lambda z \qquad or \qquad -\frac{1}{2}\Delta z + V z+ \beta |z|^2 z = \lambda z
+-\frac{1}{2}\Delta z + V z+ \beta |z|^2 z = \lambda z
 $$
 It's energy is:
 $$
-E(v) = \frac{1}{2} \int_D |\nabla v|^2 + V |v|^2 + \frac{\beta}{2} |v|^4 dx \qquad or \qquad E(v) = \frac{1}{2} \int_D \frac{1}{2}|\nabla v|^2 + V |v|^2 + \frac{\beta}{2} |v|^4 dx
+E(v) = \frac{1}{2} \int_D \frac{1}{2}|\nabla v|^2 + V |v|^2 + \frac{\beta}{2} |v|^4 dx
 $$
 Its Frechet derivative:
 $$
-< E'(v), w> = \int_D \nabla v \nabla w + V v w + \beta |v|^2 v w dx \qquad or \qquad < E'(v), w> = \int_D \frac{1}{2}\nabla v \nabla w + V v w + \beta |v|^2 v w dx
+< E'(v), w> = \int_D \frac{1}{2}\nabla v \nabla w + V v w + \beta |v|^2 v w dx
 $$ 
 The eigenvalue associated is derived as $\lambda^* = 2 E(z^*) + \frac{\beta}{2} \|z^*\|^4_{L^4}$
 The ground state is defined as:
@@ -37,140 +37,134 @@ z'(t) = - (P_{z,X} \circ \nabla_X E)(z(t))
 $$
 
 ## Choices of $X$
-- ### $X = L^2(D)$ and semi-implicit:
-    In this case $R_{L^2}(z) = z$, $P_{z,L^2}(v) = v - \frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$:
+- ### $X = L^2(D)$ with standard $L^2$-inner product:
+    In this case:
     $$
-    \nabla_{L^2} E(z) = - \Delta z + V z + \beta \|z\|^2 z \qquad or \qquad \nabla_{L^2} E(z) = - \frac{1}{2}\Delta z + V z + \beta \|z\|^2 z
+    R_{L^2}(z) = z
     $$
-    the putting all togheter and hiding the part $\frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$ into the normalization, discretize with backward Euler we get:
+    and the gradient:
     $$
-    \tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(z^{n+1})
+    \nabla_{L^2} E(z) = - \frac{1}{2}\Delta z + V z + \beta \|z\|^2 z
+    $$
+    getting:
+    $$
+    z'(t) = - (-\frac{1}{2}\Delta z + V z + \beta \|z\|^2 z ) + \frac{(z,-\frac{1}{2}\Delta z + V z + \beta \|z\|^2 z )_{L^2}}{\|z\|^2_{L^2}}z
+    $$
+    Different discretization give different Projected Sobolev Gradients:
+    - Backward Euler: Hiding the part $\frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$ into the normalization (more details at the end of this file), discretize with backward Euler we get an unconditionally stable method that requires to solve one linear system per iterate:
+    $$
+    \tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(\tilde z^{n+1}) \rightarrow (I -\tau \frac{1}{2}\Delta + \tau V + \tau \beta \|z^n\|^2)) \tilde z^{n+1} = z^n
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
-    so apply the weak form to the equation:
-    $$
-    \int_D \tilde{z}^{n+1}v dx + \tau \int_D \nabla \tilde{z}^{n+1} \nabla v +V \tilde{z}^{n+1} v + \beta |z^n|^2 \tilde{z}^{n+1} v dx = \int_D u^nv dx
-    \qquad or \qquad \int_D \tilde{z}^{n+1}v dx + \tau \int_D \frac{1}{2} \nabla \tilde{z}^{n+1} \nabla v +V \tilde{z}^{n+1} v + \beta |z^n|^2 \tilde{z}^{n+1} v dx = \int_D u^nv dx
-    \\
-    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
-    $$
-    #### Remark:
-    The fact that the projection can be "hidden" in the normalization is due to the fact that the Riesz rappresentive of $z^n$ in $L^2$ is $z^n$ itself:
-    $$
-    \tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(\tilde z^{n+1}) + \tau \frac{\lambda(z^n)}{\|z^n\|}z^n
-    $$
-    That algebrically becomes:
-    $$
-    (M + \tau H ) \tilde z^{n+1} = (1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) z^n
-    $$
-    $$
-    \tilde z^{n+1} = (1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n
-    $$
-    The normalization will become:
-    $$
-    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{\|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n\|} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|})|\|(M + \tau H ) ^{-1} z^n\|}
-    $$
-    so the $L^2$ gradient semimplicit is equivalent with or iwthout the projection up to a sign. Moreover note that $\|z^n\| = 1$ because of the constrain, and that $\lambda(z^n) $ is positive by definition (sum of positive terms), so: 
-    $$
-    z^{n+1} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|})|\|(M + \tau H ) ^{-1} z^n\|} = \frac{(M + \tau H )^{-1}z^n}{\|(M + \tau H )^{-1}z^n\|}
-    $$
-- ### $X = L^2(D)$ and explicit:
-    In this case $R_{L^2}(z) = z$, $P_{z,L^2}(v) = v - \frac{(z,v)_{L^2}}{(z,z)_{L^2}}z$:
-    $$
-    \nabla_{L^2} E(z) = - \Delta z + V z + \beta \|z\|^2 z \qquad or \qquad \nabla_{L^2} E(z) = - \frac{1}{2}\Delta z + V z + \beta \|z\|^2 z
-    $$
-    So discretizing fully explicit:
-    $$
-    \tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(z^{n})
-    \\
-    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
-    $$
-    so apply the weak form to the equation:
-    $$
-    \int_D \tilde{z}^{n+1} v dx = \int_D z^n v dx - \tau \int_D \nabla z^n \nabla v + Vz^nv + \beta |z^n|^2 z^n v dx + \tau \frac{\int_D \nabla z^n \nabla z^n + Vz^n z^n + \beta |z^n|^2 z^n z^n dx}{\|z\|^2} \int_D z^n v dx
-    \\
-    or
-    \\
-    \int_D \tilde{z}^{n+1} v dx = \int_D z^n v dx - \tau \int_D \frac{1}{2}\nabla z^n \nabla v + Vz^nv + \beta |z^n|^2 z^n v dx + \tau \frac{\int_D \frac{1}{2}\nabla z^n \nabla z^n + Vz^n z^n + \beta |z^n|^2 z^n z^n dx}{\|z\|^2} \int_D z^n v dx
 
-    \\
-
-
-    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
-    $$  
-
+    $$
+    % \int_D \tilde{z}^{n+1}v dx + \tau \int_D \nabla \tilde{z}^{n+1} \nabla v +V \tilde{z}^{n+1} v + \beta |z^n|^2 \tilde{z}^{n+1} v dx = \int_D u^nv dx
+    % \qquad or \qquad \int_D \tilde{z}^{n+1}v dx + \tau \int_D \frac{1}{2} \nabla \tilde{z}^{n+1} \nabla v +V \tilde{z}^{n+1} v + \beta |z^n|^2 \tilde{z}^{n+1} v dx = \int_D u^nv dx
+    % \\
+    % z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    %$$
+    - Forward Euler:
+        Discretizing with forward Euler we get a conditionally stable method that requires only one matrix vector multiplication for iterate:
+        $$
+        \tilde z^{n+1} = z^n - \tau (-\frac{1}{2}\Delta z^n + V z^n + \beta \|z^n\|^2 z^n )
+        \\
+        z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+        $$
+        $$
+        % \int_D \tilde{z}^{n+1} v dx = \int_D z^n v dx - \tau \int_D \nabla z^n \nabla v + Vz^nv + \beta |z^n|^2 z^n v dx + \tau \frac{\int_D \nabla z^n \nabla z^n + Vz^n z^n + \beta |z^n|^2 z^n z^n dx}{\|z\|^2} \int_D z^n v dx
+        % \\
+        % or
+        % \\
+        % \int_D \tilde{z}^{n+1} v dx = \int_D z^n v dx - \tau \int_D \frac{1}{2}\nabla z^n \nabla v + Vz^nv + \beta |z^n|^2 z^n v dx + \tau \frac{\int_D \frac{1}{2}\nabla z^n \nabla z^n + Vz^n z^n + \beta |z^n|^2 z^n z^n dx}{\|z\|^2} \int_D z^n v dx
+        % \\
+        % z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+        $$  
 - ### $X = H^1(D)$ and inner product $(.,.)_{H^1} = (\nabla ., \nabla .)_{L^2}$:
     In this case:
     $$
     (R_{H^1}(z),v)_{H^1} = (\nabla R_{H^1}(z),\nabla v)_{L^2} = (z,v)_{L^2} \qquad \forall v \in H^1_0(D)
     \\
-    (\nabla E_{H^1}(z),v)_{H^1} = (\nabla \nabla E_{H^1}(z),\nabla v)_{L^2} = \int_D \nabla v \nabla w + V v w + \beta |v|^2 v w dx \qquad or \qquad (\nabla \nabla E_{H^1}(z),\nabla v)_{L^2} = \int_D \frac{1}{2}\nabla v \nabla w + V v w + \beta |v|^2 v w dx 
+    (\nabla \nabla E_{H^1}(z),\nabla v)_{L^2} = \int_D \frac{1}{2}\nabla v \nabla w + V v w + \beta |v|^2 v w dx 
     $$
-    So it's needed to solve 2 previous subproblems and then:
+    So it's needed to solve 2 previous subproblems to compute the single step. The continous Sobolev Gradient Flow reads as:
+    $$
+    z'(t) = -\nabla E_{H^1}(z) + \frac{(\nabla E_{H^1}(z),z)_{L^2}}{(R_{H^1}(z),z)_{L^2}} R_{H^1}(z)
+    $$
+    The only possible discretization is using Forward Euler, getting a conditionally stable method that requires the solution of 2 linear systems at each iterate but the matrix can be prefactorized:
     $$
     \tilde z^{n+1} = z^n - \tau \nabla_{H^1} E(z^{n}) - \tau \frac{(\nabla_{H^1}E(z^n),z^n)_{L^2}}{(R_{H^1}(z^n),z^n)_{L^2}} R_{H^1}(z^n)
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
-    so it's possible to assign pointwise.
 - ### $X = H^1_0(D) $ and inner product $a_0(.,.) = \int_D \frac{1}{2}\nabla . \nabla . + V . .dx$:
     In this case Reisz:
     $$
-    a_0(R_{a_0}(z),w) = \int_D \nabla R_{a_0}(z) \nabla w + V R_{a_0}(z) w dx = (z,w)_{L^2} = \int_D zw dx \qquad \forall w \in H^1_0(D)
-    \\
-    or
-    \\
     a_0(R_{a_0}(z),w) = \int_D \frac{1}{2}\nabla R_{a_0}(z) \nabla w + V R_{a_0}(z) w dx = (z,w)_{L^2} = \int_D zw dx \qquad \forall w \in H^1_0(D)
     $$
     while the gradient:
     $$
-    a_0(\nabla_{a_0}E(z), v) = \int_D \nabla \nabla_{a_0}E(z) \nabla v + V \nabla_{a_0}E(z) v dx = < E'(v), w> = \int_D \nabla v \nabla w + V v w + \beta |v|^2 v w dx 
-    \\ 
-    or 
-    \\
      a_0(\nabla_{a_0}E(z), v) = \int_D \frac{1}{2}\nabla \nabla_{a_0}E(z) \nabla v + V \nabla_{a_0}E(z) v dx = < E'(v), w> = \int_D \frac{1}{2}\nabla v \nabla w + V v w + \beta |v|^2 v w dx
     $$
     so the gradient is:
     $$
     \nabla _{a_0} E(z) = z + R_{a_0}(\beta |z|^2 z)
     $$
-
-    so discretize the equation with forward Euler:
+    So it's necessary to solve 2 linear systems also this time, to get the continous Sobolev Gradient Flow:
     $$
-    \tilde z^{n+1} =z^n - \tau z^n - \tau R_{a_0}(\beta |z|^2z) + \tau \frac{(z^n + R_{a_0}(\beta |z^n|^2 z^n), z^n)_{L^2}}{(R_{a_0}(z^n),z^n)_{L^2}}R_{a_0}(z^n)
+    z'(t) = - \tau z - \tau R_{a_0}(\beta |z|^2z) + \tau \frac{(z + R_{a_0}(\beta |z|^2 z), z)_{L^2}}{(R_{a_0}(z),z)_{L^2}}R_{a_0}(z)
+    $$
+    Forward Euler is the only feasible way and so the final method is conditionally stable, it requires the solution of 2 linear systems at each iteration and reads as:
+    $$
+    \tilde z^{n+1} =z^n - \tau z^n - \tau R_{a_0}(\beta |z^n|^2z^n) + \tau \frac{(z^n + R_{a_0}(\beta |z^n|^2 z^n), z^n)_{L^2}}{(R_{a_0}(z^n),z^n)_{L^2}}R_{a_0}(z^n)
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
-    this assignment could be done pointwise.
 - ### $ X = H^1_0(D) $ and inner product $a_z(.,.) = \int_D \frac{1}{2} \nabla . \nabla . + V . . + \beta |z|^2 . . dx$:
     In this case the Riesz projectionis given by:
     $$
-    a_z(R_{a_z}(z),w) = \int_D \nabla R_{a_z}(z) \nabla w + V R_{a_z}(z) w + \beta |z|^2 * R_{a_z}(z) w dx = (z,w)_{L^2} = \int_D zw dx \qquad \forall w \in H^1_0(D)
-    \\
-    or
-    \\
     a_z(R_{a_z}(z),w) = \int_D \frac{1}{2}\nabla R_{a_z}(z) \nabla w + V R_{a_z}(z) w + \beta |z|^2 * R_{a_z}(z) w  dx = (z,w)_{L^2} = \int_D zw dx \qquad \forall w \in H^1_0(D)
     $$    
     The gradient becomes simply:
     $$
     \nabla_{a_z} E(z) = z
     $$
-    So the final formula:
+    So the continous Sobolev Gradient Flow reads as:
+    $$
+    z'(t) = - \tau z + \tau \frac{(z,z)_{L^2}}{(z,R_{a_z(z)})_{L^2}}R_{a_z}(z)
+    $$
+    Different Discretization leads to different Projected Sobolev Gradient FlowS:
+    - Forward Euler leads to a conditionally stable method that requires the solution of one linear system for each iteration: 
     $$
     \tilde z^{n+1} = z^n - \tau z^n + \tau \frac{(z^n,z^n)_{L^2}}{(z^n,R_{a_z(z^n)})_{L^2}}R_{a_z}(z^n)
     \\
     z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
     $$
-    also pointwise
+    - Backward Euler gives an unconditionally stable method that still require the solution of one linear system for each iteration:
+    $$
+    (1+ \tau)\tilde z^{n+1} = z^n + \tau \frac{(z^n,z^n)_{L^2}}{(z^n,R_{a_z(z^n)})_{L^2}}R_{a_z}(z^n)
+    \\
+    z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}}
+    $$
 
 
-TODO:
-- [ x ]CONTROLLARE IL CODICE 
-- [ x ]PAPER CITATI ED ALTRI ESPERIMETNI NUMERICI
-- [ x ]CAMBIARE H E VEDERE LA CONVERGENZA
-
-- [ x ]TANTE PRIME ITERATE CON VARI h
-- [ x ]VERO GRADINETE L2 (BAO 12) CON MASS LAMPING FORSE
-
-- [ x ] controlalre quadrature per la non-linearità 
+#### Remark:
+The fact that the projection can be "hidden" in the normalization is due to the fact that the Riesz rappresentive of $z^n$ in $L^2$ is $z^n$ itself:
+$$
+\tilde z^{n+1} = z^n - \tau \nabla_{L^2} E(\tilde z^{n+1}) + \tau \frac{\lambda(z^n)}{\|z^n\|}z^n
+$$
+That algebrically becomes:
+$$
+(M + \tau H ) \tilde z^{n+1} = (1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) z^n
+$$
+$$
+\tilde z^{n+1} = (1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n
+$$
+The normalization will become:
+$$
+z^{n+1} = \frac{\tilde{z}^{n+1}}{\|\tilde{z}^{n+1}\|_{L^2}} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{\|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n\|} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|})|\|(M + \tau H ) ^{-1} z^n\|}
+$$
+so the $L^2$ gradient semimplicit is equivalent with or iwthout the projection up to a sign. Moreover note that $\|z^n\| = 1$ because of the constrain, and that $\lambda(z^n) $ is positive by definition (sum of positive terms), so: 
+$$
+z^{n+1} = \frac{(1 + \tau \frac{\lambda(z^n)}{\|z^n\|}) (M + \tau H ) ^{-1} z^n}{|(1 + \tau \frac{\lambda(z^n)}{\|z^n\|})|\|(M + \tau H ) ^{-1} z^n\|} = \frac{(M + \tau H )^{-1}z^n}{\|(M + \tau H )^{-1}z^n\|}
+$$

@@ -88,6 +88,8 @@ ax[0].set_ylabel('Iterate')
 ax[0].set_title(f'Results for Test Case {test_case_num}')
 ax[0].legend()
 ax[0].grid(True, which="both", ls="--")
+ax[0].tick_params(axis='both', which='major')
+ax[0].tick_params(axis='both', which='minor')
 
 ax[1].set_xlim([xmin,xmax])
 ax[1].set_ylim([None, 1000])
@@ -96,6 +98,8 @@ ax[1].set_ylabel('Total Time (s)')
 ax[1].set_title(f'Results for Test Case {test_case_num}')
 ax[1].legend()
 ax[1].grid(True, which="both", ls="--")
+ax[0].tick_params(axis='both', which='major')
+ax[0].tick_params(axis='both', which='minor')
 
 
 fig.savefig(case_folder / "images" / f"GD_results{test_case_num}.png")

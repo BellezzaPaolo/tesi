@@ -4,7 +4,7 @@ This module implements the az gradient of the cost functional.
 
 import firedrake as fd
 from .Gradients import Gradient
-
+import time
 
 class Gradient_az(Gradient):
     '''
@@ -77,8 +77,12 @@ class Gradient_az(Gradient):
         if fd.norm(u_old, 'L2')-1 >1e-12:
             raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
         
+        # t0 = time.time()
         # Compute the Riesz representative
         self.compute_Reiz_representative(u_old)
+        # t1 = time.time()
+        # print(f"Time to compute Riesz representative: {t1-t0:.2f} seconds")
+        # t2 = time.time()
 
         # Update as a convex combination of u_old and normalized Riesz direction.
         # intE = fd.assemble(u_old * u_old * fd.dx) # should be 1 in exact aritmetic because it's simply the norm of the previous uh
@@ -108,7 +112,8 @@ class Gradient_az(Gradient):
             self.beta4 = fd.assemble(self.beta * 0.5 * self.R_u**4 * self.inv_intR4 * fd.dx)
             self.gamma1 = fd.assemble(2 * u_old * self.R_u * self.inv_intR * fd.dx)
             self.gamma2 = fd.assemble(self.R_u**2 * self.inv_intR2 * fd.dx)
-            
+        # t3 = time.time()
+        # print(f"Time to compute energy and coefficients for the golden search: {t3-t2} seconds")
         return E_old
 
 
@@ -148,11 +153,16 @@ class Gradient_az_explicit(Gradient_az):
                         + self.beta4 / d4 * x**4)
         #self.golden_search(f, a= 0.01, b = 3.0)  
             # Choose tau adaptively by 1D minimization of the model energy.
+            # t5 = time.time()
             self.tau = fd.Constant(self.golden_search(f, a= 0.01, b = 3.0))
+            # t6 = time.time()
+            # print(f"Time to compute the golden search: {t6-t5} seconds")
             
-            self.tau_history.append(self.tau)
-
+            self.tau_history.append(self.tau.values()[0])
+        # t7 = time.time()
         self.uh.assign((1 - self.tau) * u_old + self.tau * 1/self.intR * self.R_u)
+        # t8 = time.time()
+        # print(f"Time to update the solution: {t8-t7} seconds")
         return E_old
     
 class Gradient_az_semimplicit(Gradient_az):
@@ -189,7 +199,7 @@ class Gradient_az_semimplicit(Gradient_az):
                         + self.beta4 / d4 * x**4)
             # Choose tau adaptively by 1D minimization of the model energy.
             self.tau = fd.Constant(self.golden_search(f, a= 0.01, b = 1000.0))
-            self.tau_history.append(self.tau)
+            self.tau_history.append(self.tau.values()[0])
             
         self.uh.assign(1 / (1+ self.tau) * ( u_old + self.tau * 1/self.intR * self.R_u))
         return E_old

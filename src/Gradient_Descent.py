@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import time
+from pathlib import Path
 from Optimizer import Optimizer
 
 class Gradient_Descent(Optimizer):
@@ -146,7 +147,8 @@ class Gradient_Descent(Optimizer):
             if show:
                 plt.show()
             if filesave is not None:
-                plt.savefig(filesave.replace('.png','_tau.png'))
+                tau_filesave = Path(filesave).with_name(Path(filesave).stem + '_tau.png')
+                plt.savefig(tau_filesave)
                 plt.close()
 
     def save_data(self, filename, res, test_name):
