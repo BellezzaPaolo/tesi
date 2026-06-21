@@ -28,6 +28,7 @@
   "potential": "harmonic",
   "initial_guess": "linear_GS",
   "maximum_iterations": 500,
+  "maximum_iterations_PF": 50,
   "tollerance": 1e-05,
   "energy_reference": 1.9729886818853815
 }
