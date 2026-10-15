@@ -1,11 +1,21 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 from pathlib import Path
+import argparse
+import sys
+from pathlib import Path
 
+# Parse command-line arguments before importing Firedrake so PETSc does not see `--log2h`.
+parser = argparse.ArgumentParser(description='Benchmark gradient assembly and step timings', add_help=True)
+parser.add_argument('--solver', type=str, required=False, default= None,
+                    help = 'solver ot be used')
+args, remaining_args = parser.parse_known_args()
+sys.argv = [sys.argv[0], *remaining_args]
+solver = args.solver
 
-base_dir = Path(__file__).resolve().parent
-results_file = base_dir / "times.csv"
-output_dir = base_dir / "images"
+folder = '~/Desktop/tesi/tesi/test_firedrake_complexity/' + solver +'_solver/' if solver is not None else '~/Desktop/tesi/tesi/test_firedrake_complexity/default_solver/'
+results_file = (Path(folder) / "times.csv").expanduser()
+output_dir = (Path(folder) / "images").expanduser()
 output_dir.mkdir(exist_ok=True)
 
 # Number of coarsest mesh sizes to omit from the plots.
@@ -35,6 +45,8 @@ timing_groups = {
         "definition_solver_system",
     ],
     "solve": ["solve_mass", "solve_laplacian", "solve_system"],
+    "solve_2": ["solve_2_laplacian", "solve_2_mass", "solve_2_system"],
+    "solve_3": ["solve_3_laplacian", "solve_3_mass", "solve_3_system"]
 }
 labels = {
     "mass": "Mass",
@@ -109,4 +121,29 @@ for group_name, columns in timing_groups.items():
     fig.savefig(output_dir / f"time_{group_name}.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
-print(f"Saved {len(timing_groups)} figures to {output_dir}")
+system_timing_columns = {
+    "Assembly": "assemble_system",
+    "Solver definition": "definition_solver_system",
+    "First solve": "solve_system",
+    "Repeated solve (LU)": "solve_2_system",
+}
+missing = [column for column in system_timing_columns.values() if column not in df_mean.columns]
+if missing:
+    raise ValueError(f"Missing system timing column(s): {', '.join(missing)}")
+
+fig, axis = plt.subplots(figsize=(9, 7), constrained_layout=True)
+axis.set_xscale("log", base=2)
+axis.set_yscale("log", base=2)
+axis.set_xlabel("Number of degrees of freedom (N)")
+axis.set_ylabel("Time [s]")
+axis.set_title("System solution times")
+axis.grid(True, which="both", alpha=0.3)
+
+for label, column in system_timing_columns.items():
+    axis.plot(N, df_mean[column], "o-", linewidth=2, markersize=5, label=label)
+
+axis.legend()
+fig.savefig(output_dir / "time_system_all.png", dpi=300, bbox_inches="tight")
+plt.close(fig)
+
+print(f"Saved {len(timing_groups) + 1} figures to {output_dir}")
