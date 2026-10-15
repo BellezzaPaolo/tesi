@@ -7,7 +7,7 @@ It compares:
 - a multiscale ParaflowS strategy that combines fine and coarse updates,
 - different external potentials and parameter regimes.
 
-The code is organized as research scripts (not a packaged library), with CSV/log/plot outputs for post-processing.
+The code is organized as research scripts (not a packaged library), with CSV/log/plot outputs for post-processing. It's a work in progress so it's disorganized and this README could be not updated.
 
 ## Problem Setting
 
