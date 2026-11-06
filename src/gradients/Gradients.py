@@ -68,7 +68,7 @@ class Gradient(abc.ABC):
 
         self.adaptivity = False
 
-    def golden_search(self, func, a = 0.01, b = 10.0, tol = 1e-5):
+    def golden_search(self, func, a = 0.01, b = 10.0, tol = 1e-5, plot = False):
         """
         Golden-section search
         to find the minimum of f on [a,b]
@@ -85,8 +85,6 @@ class Gradient(abc.ABC):
         # Golden-section search over scalar step size interval [a, b].
         invphi = (fd.sqrt(5) - 1) / 2  # 1 / phi
 
-        # x = np.linspace(a - 0.3, b + 1, 100)
-
         while b - a > tol:
             c = b - (b - a) * invphi
             d = a + (b - a) * invphi
@@ -95,11 +93,13 @@ class Gradient(abc.ABC):
             else:  # func(c) > func(d) to find the maximum
                 a = c
 
-        # fig, ax = plt.subplots()
-        # ax.plot(x, func(x))
-        # plt.plot((b + a) / 2, func((b + a) / 2), 'ro', label='Minimum')
-        # plt.legend()
-        # plt.show()
+        if plot:
+            x = np.linspace(a - 0.3, b + 1, 100)
+            fig, ax = plt.subplots()
+            ax.plot(x, func(x))
+            plt.plot((b + a) / 2, func((b + a) / 2), 'ro', label='Minimum')
+            plt.legend()
+            plt.show()
 
         # print(f'new energy {func((a+b)/2)/2}')
 
