@@ -6,6 +6,12 @@ import firedrake as fd
 from .Gradients import Gradient
 import time
 
+try:
+    from line_profiler import profile
+except NameError:
+    def profile(function):
+        return function
+
 class Gradient_az(Gradient):
     '''
     This class implements the az gradient of the cost functional.
@@ -22,61 +28,72 @@ class Gradient_az(Gradient):
     def __init__(self, W, bcs, beta, v, type_discr):
         super().__init__(W, bcs, beta, v, 'az', type_discr)
 
+    @profile
     def compute_Reiz_representative(self, u_old):
         '''
         For the az gradient, the Riesz representative is computed at each step solving the linear variational problem.
         '''
-        rhs_R = fd.inner(u_old , self.w) * fd.dx
+        fd.assemble(fd.inner(u_old , self.w) * fd.dx, tensor = self.rhs_R)
 
-        problem_R = fd.LinearVariationalProblem(self.a + self.beta * abs(u_old)**2 * self.u * self.w * fd.dx,
-                                                rhs_R,
-                                                self.R_u,
-                                                self.bcs)
-        solver_R = fd.LinearVariationalSolver(problem_R)#, solver_parameters={"ksp_view": None})
-        solver_R.solve()
+        self.nonlinear_coefficient.dat.data[:] = self.beta * u_old.dat.data_ro[:]**2
+        
+        fd.assemble(self.s, bcs=self.bcs, tensor=self.S)
+        
+        self.Solver_System.solve(self.R_u, self.rhs_R)
 
         return self.R_u
     
+    @profile
     def compute_gradient(self, u_old):
         Warning("The gradient for the az gradient is the function itself, so this method is not needed.")
 
         return u_old
     
+    @profile
     def assemble_problem(self, tau = None):
         '''
         Allocate and assembles forms and minimization quantities
 
         :param tau (float): time step
         '''
-        if tau is None:
-            self.adaptivity = True
-            self.tau = fd.Constant(1.0) # dummy value, the actual time step will be computed at each step.
-            self.tau_history = []
-        else:
-            self.adaptivity = False
-            self.tau = fd.Constant(tau)
-
         # Built the Reisz representative and the linear part of the variational problem
         self.R_u = fd.Function(self.W)
 
-        # Reusable coefficients for adaptive-model assemblies (updated each step).
-        self.inv_intR = fd.Constant(1.0)
-        self.inv_intR2 = fd.Constant(1.0)
-        self.inv_intR3 = fd.Constant(1.0)
-        self.inv_intR4 = fd.Constant(1.0)
+        self.nonlinear_coefficient = fd.Function(self.W)
 
-        self.a = 0.5 * fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
-                + self.v * self.u * self.w * fd.dx
+        self.s = 0.5 * fd.inner(fd.grad(self.u), fd.grad(self.w)) * fd.dx \
+                + self.v * self.u * self.w * fd.dx \
+                + self.nonlinear_coefficient * self.u * self.w * fd.dx
+        self.S = fd.assemble(self.s, bcs = self.bcs)
+
+        self.Solver_System = fd.LinearSolver(self.S)
+
+        self.rhs_R = fd.assemble(self.w * fd.dx)
+
+        if tau is None:
+            self.adaptivity = True
+            self.tau = 1.0 # dummy value, the actual time step will be computed at each step.
+            self.tau_history = []
+
+        else:
+            self.adaptivity = False
+            self.tau = tau
+
+        super().assemble_problem(compute_intE = True, compute_energy = False, adaptivity = self.adaptivity)
+
+        # warm up with dummy inputs
+        _ = self.compute_integrals(self.R_u.dat.data_ro, self.R_u.dat.data_ro, self.R_u.dat.data_ro)
+
+        if self.adaptivity:
+            _ = self.compute_integral_adaptivity(self.R_u.dat.data_ro, self.R_u.dat.data_ro)
         
+    @profile
     def step(self, u_old):
         '''
         Perform a step of the gradient flow.
 
         :param u_old (Function): the current iterate
-        '''
-        if fd.norm(u_old, 'L2')-1 >1e-12:
-            raise ValueError(f"The previous solution is {fd.norm(u_old, 'L2')}, cannot proceed with the minimization.")
-        
+        '''        
         # t0 = time.time()
         # Compute the Riesz representative
         self.compute_Reiz_representative(u_old)
@@ -84,37 +101,34 @@ class Gradient_az(Gradient):
         # print(f"Time to compute Riesz representative: {t1-t0:.2f} seconds")
         # t2 = time.time()
 
-        # Update as a convex combination of u_old and normalized Riesz direction.
-        # intE = fd.assemble(u_old * u_old * fd.dx) # should be 1 in exact aritmetic because it's simply the norm of the previous uh
-        self.intR = fd.assemble(self.R_u * u_old * fd.dx)
+        self.compute_integrals(u=u_old.dat.data_ro, R=self.R_u.dat.data_ro, gradE=u_old.dat.data_ro)
 
-
-        self.alpha0 = fd.assemble(0.5 * fd.inner(fd.grad(u_old), fd.grad(u_old)) * fd.dx \
-                            + self.v * u_old * u_old * fd.dx)
-        self.beta0 = fd.assemble(self.beta * 0.5 * (u_old)**4 * fd.dx)
-        self.gamma0 = fd.assemble(u_old**2 * fd.dx)
-
-        E_old = 0.5 * (self.alpha0/self.gamma0**2 + self.beta0/self.gamma0**4)
+        self.intE_intR = self.integrals[1] / self.integrals[0]
 
         if self.adaptivity:
-            self.inv_intR.assign(1.0 / self.intR)
-            self.inv_intR2.assign(1.0 / self.intR**2)
-            self.inv_intR3.assign(1.0 / self.intR**3)
-            self.inv_intR4.assign(1.0 / self.intR**4)
+            self.compute_integral_adaptivity(u=u_old.dat.data_ro, proj_term=self.R_u.dat.data_ro)
+            self.intE_intR2 = self.intE_intR**2
+            self.intE_intR3 = self.intE_intR**3
+            self.intE_intR4 = self.intE_intR**4
 
-            self.alpha1 = fd.assemble( 2 * self.inv_intR * 0.5 * fd.inner(fd.grad(self.R_u), fd.grad(u_old)) * fd.dx \
-                                + 2 * self.inv_intR * self.v * self.R_u * u_old * fd.dx)
-            self.alpha2 = fd.assemble( self.inv_intR2 * 0.5 * fd.inner(fd.grad(self.R_u), fd.grad(self.R_u)) * fd.dx \
-                                + self.inv_intR2 * self.v * self.R_u * self.R_u * fd.dx)
-            self.beta1 = fd.assemble(self.beta * 2 * (u_old)**3 * self.R_u * self.inv_intR * fd.dx)
-            self.beta2 = fd.assemble(self.beta * 3 * (u_old)**2 * self.R_u**2 * self.inv_intR2 * fd.dx)
-            self.beta3 = fd.assemble(self.beta * 2 * u_old * self.R_u**3 * self.inv_intR3 * fd.dx)
-            self.beta4 = fd.assemble(self.beta * 0.5 * self.R_u**4 * self.inv_intR4 * fd.dx)
-            self.gamma1 = fd.assemble(2 * u_old * self.R_u * self.inv_intR * fd.dx)
-            self.gamma2 = fd.assemble(self.R_u**2 * self.inv_intR2 * fd.dx)
+
+            self.alpha0 = self.integrals_adaptivity[0]
+            self.alpha1 = 2 * self.intE_intR * self.integrals_adaptivity[1]
+            self.alpha2 = self.intE_intR2 * self.integrals_adaptivity[2]
+
+            self.beta0 = self.beta * 0.5 * self.integrals_adaptivity[3]
+            self.beta1 = self.beta * 2 * self.intE_intR * self.integrals_adaptivity[4]
+            self.beta2 = self.beta * 3 * self.intE_intR2 * self.integrals_adaptivity[5]
+            self.beta3 = self.beta * 2 * self.intE_intR3 * self.integrals_adaptivity[6]
+            self.beta4 = self.beta * 0.5 * self.intE_intR4 * self.integrals_adaptivity[7]
+
+            # self.M.M.handle.mult(u_old.dat.vec_ro, self.M_u)
+            self.gamma0 = self.integrals_adaptivity[8]
+            self.gamma1 = 2 * self.intE_intR * self.integrals_adaptivity[9]
+            self.gamma2 = self.intE_intR2 * self.integrals_adaptivity[10]
         # t3 = time.time()
         # print(f"Time to compute energy and coefficients for the golden search: {t3-t2} seconds")
-        return E_old
+        # return E_old
 
 
     
@@ -126,7 +140,8 @@ class Gradient_az_explicit(Gradient_az):
     '''
     def __init__(self, W, bcs, beta, v):
         super().__init__(W, bcs, beta, v, 'explicit')
-            
+       
+    @profile     
     def step(self, u_old):
         '''
         Perform a step of the gradient flow.
@@ -134,7 +149,7 @@ class Gradient_az_explicit(Gradient_az):
         :param u_old (Function): the current iterate
         '''
         
-        E_old = super().step(u_old)
+        super().step(u_old)
 
         if self.adaptivity:
             def den(x):
@@ -154,16 +169,17 @@ class Gradient_az_explicit(Gradient_az):
         #self.golden_search(f, a= 0.01, b = 3.0)  
             # Choose tau adaptively by 1D minimization of the model energy.
             # t5 = time.time()
-            self.tau = fd.Constant(self.golden_search(f, a= 0.01, b = 3.0))
+            self.tau = self.golden_search(f, a = 0.01, b = 3.0)
             # t6 = time.time()
             # print(f"Time to compute the golden search: {t6-t5} seconds")
             
-            self.tau_history.append(self.tau.values()[0])
+            self.tau_history.append(self.tau)#.values()[0])
         # t7 = time.time()
-        self.uh.assign((1 - self.tau) * u_old + self.tau * 1/self.intR * self.R_u)
+        self.uh.dat.data[:] = (1.0 - self.tau) * u_old.dat.data_ro[:] + self.tau * self.intE_intR * self.R_u.dat.data_ro[:]
         # t8 = time.time()
         # print(f"Time to update the solution: {t8-t7} seconds")
-        return E_old
+        # self.M.M.handle.mult(self.uh.data.vec_ro, self.M_u)
+        # return self.uh.dat.vec_ro.dot(self.M_u) ** 0.5
     
 class Gradient_az_semimplicit(Gradient_az):
     '''
@@ -173,14 +189,15 @@ class Gradient_az_semimplicit(Gradient_az):
     '''
     def __init__(self, W, bcs, beta, v):
         super().__init__(W, bcs, beta, v, 'semimplicit')
-            
+     
+    @profile       
     def step(self, u_old):
         '''
         Perform a step of the gradient flow.
 
         :param u_old (Function): the current iterate
         '''
-        E_old = super().step(u_old)
+        super().step(u_old)
 
         if self.adaptivity:
             def den(x):
@@ -198,8 +215,10 @@ class Gradient_az_semimplicit(Gradient_az):
                         + self.beta3 / d4 * x**3 
                         + self.beta4 / d4 * x**4)
             # Choose tau adaptively by 1D minimization of the model energy.
-            self.tau = fd.Constant(self.golden_search(f, a= 0.01, b = 1000.0))
-            self.tau_history.append(self.tau.values()[0])
+            self.tau = self.golden_search(f, a= 0.01, b = 1000.0)
+            self.tau_history.append(self.tau)#.values()[0])
             
-        self.uh.assign(1 / (1+ self.tau) * ( u_old + self.tau * 1/self.intR * self.R_u))
-        return E_old
+        self.uh.dat.data[:] = 1.0 / (1.0 + self.tau) * ( u_old.dat.data_ro[:] + self.tau * self.intE_intR * self.R_u.dat.data_ro[:])
+
+        # self.M.M.handle.mult(self.uh.data.vec_ro, self.M_u)
+        # return self.uh.dat.vec_ro.dot(self.M_u) ** 0.5
